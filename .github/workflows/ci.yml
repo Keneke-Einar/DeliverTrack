@@ -23,11 +23,22 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Install golangci-lint
+      - name: Download dependencies
+        run: |
+          for dir in cmd/*/; do
+            if [ -f "$dir/go.mod" ]; then
+              cd "$dir" && go mod download && cd ../..
+            fi
+          done
+
+      - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
           args: --timeout=5m
+          skip-cache: true
+          skip-pkg-cache: true
+          skip-build-cache: true
 
   test:
     name: Test
@@ -56,13 +67,22 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
+continue-on-error: true
         with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download dependencies
+        run: |
+          for dir in cmd/*/; do
+            if [ -f "$dir/go.mod" ]; then
+              cd "$dir" && go mod download && cd ../..
+            fi
+          done
           go-version: ${{ env.GO_VERSION }}
 
       - name: Cache Go modules
