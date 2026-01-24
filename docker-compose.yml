@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: delivertrack-postgres
+    environment:
+      POSTGRES_USER: delivertrack
+      POSTGRES_PASSWORD: delivertrack_password
+      POSTGRES_DB: delivertrack
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - delivertrack-network
+
+  mongodb:
+    image: mongo:7
+    container_name: delivertrack-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: delivertrack
+      MONGO_INITDB_ROOT_PASSWORD: delivertrack_password
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - delivertrack-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: delivertrack-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - delivertrack-network
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: delivertrack-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: delivertrack
+      RABBITMQ_DEFAULT_PASS: delivertrack_password
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - delivertrack-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: delivertrack-app
+    environment:
+      - DATABASE_URL=postgres://delivertrack:delivertrack_password@postgres:5432/delivertrack?sslmode=disable
+      - MONGODB_URL=mongodb://delivertrack:delivertrack_password@mongodb:27017
+      - REDIS_URL=redis:6379
+      - RABBITMQ_URL=amqp://delivertrack:delivertrack_password@rabbitmq:5672/
+      - PORT=8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - mongodb
+      - redis
+      - rabbitmq
+    networks:
+      - delivertrack-network
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  redis_data:
+  rabbitmq_data:
+
+networks:
+  delivertrack-network:
+    driver: bridge
