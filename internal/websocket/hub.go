@@ -18,11 +18,11 @@ var upgrader = websocket.Upgrader{
 }
 
 type Client struct {
-	conn          *websocket.Conn
-	send          chan []byte
-	hub           *Hub
+	conn            *websocket.Conn
+	send            chan []byte
+	hub             *Hub
 	trackingNumbers map[string]bool
-	mu            sync.RWMutex
+	mu              sync.RWMutex
 }
 
 type Hub struct {

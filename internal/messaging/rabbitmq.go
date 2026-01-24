@@ -14,13 +14,13 @@ type MessageBroker struct {
 }
 
 type PackageEvent struct {
-	PackageID       string  `json:"package_id"`
-	TrackingNumber  string  `json:"tracking_number"`
-	Status          string  `json:"status"`
-	Location        string  `json:"location"`
-	Latitude        float64 `json:"latitude"`
-	Longitude       float64 `json:"longitude"`
-	Timestamp       string  `json:"timestamp"`
+	PackageID      string  `json:"package_id"`
+	TrackingNumber string  `json:"tracking_number"`
+	Status         string  `json:"status"`
+	Location       string  `json:"location"`
+	Latitude       float64 `json:"latitude"`
+	Longitude      float64 `json:"longitude"`
+	Timestamp      string  `json:"timestamp"`
 }
 
 const (

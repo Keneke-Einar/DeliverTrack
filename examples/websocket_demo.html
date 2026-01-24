@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeliverTrack - WebSocket Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 10px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.connecting {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .updates {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            padding: 15px;
+            background: #f8f9fa;
+        }
+        .update-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        .update-item .timestamp {
+            color: #666;
+            font-size: 0.85em;
+            margin-top: 5px;
+        }
+        .update-item .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        .status-badge.pending { background: #ffc107; color: #000; }
+        .status-badge.in_transit { background: #17a2b8; color: #fff; }
+        .status-badge.out_for_delivery { background: #fd7e14; color: #fff; }
+        .status-badge.delivered { background: #28a745; color: #fff; }
+        .status-badge.failed { background: #dc3545; color: #fff; }
+        .no-updates {
+            text-align: center;
+            color: #666;
+            padding: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚚 DeliverTrack</h1>
+            <p>Real-Time Package Tracking WebSocket Demo</p>
+        </div>
+        
+        <div class="content">
+            <div class="section">
+                <h2>Connection Status</h2>
+                <div id="connectionStatus" class="status disconnected">
+                    Disconnected
+                </div>
+                <button id="connectBtn" onclick="toggleConnection()">Connect</button>
+            </div>
+
+            <div class="section">
+                <h2>Subscribe to Package</h2>
+                <input 
+                    type="text" 
+                    id="trackingNumber" 
+                    placeholder="Enter tracking number (e.g., TRK123456789)"
+                    disabled
+                />
+                <button id="subscribeBtn" onclick="subscribeToPackage()" disabled>
+                    Subscribe
+                </button>
+            </div>
+
+            <div class="section">
+                <h2>Real-Time Updates</h2>
+                <div class="updates" id="updates">
+                    <div class="no-updates">
+                        No updates yet. Connect and subscribe to a package to see live updates.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let isConnected = false;
+
+        function updateConnectionStatus(status, message) {
+            const statusDiv = document.getElementById('connectionStatus');
+            statusDiv.className = `status ${status}`;
+            statusDiv.textContent = message;
+        }
+
+        function toggleConnection() {
+            if (isConnected) {
+                disconnect();
+            } else {
+                connect();
+            }
+        }
+
+        function connect() {
+            updateConnectionStatus('connecting', 'Connecting...');
+            
+            ws = new WebSocket('ws://localhost:8080/ws');
+            
+            ws.onopen = () => {
+                isConnected = true;
+                updateConnectionStatus('connected', 'Connected');
+                document.getElementById('connectBtn').textContent = 'Disconnect';
+                document.getElementById('trackingNumber').disabled = false;
+                document.getElementById('subscribeBtn').disabled = false;
+                addUpdate('System', 'Connected to WebSocket server', 'connected');
+            };
+            
+            ws.onclose = () => {
+                isConnected = false;
+                updateConnectionStatus('disconnected', 'Disconnected');
+                document.getElementById('connectBtn').textContent = 'Connect';
+                document.getElementById('trackingNumber').disabled = true;
+                document.getElementById('subscribeBtn').disabled = true;
+                addUpdate('System', 'Disconnected from server', 'disconnected');
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                addUpdate('System', 'Connection error occurred', 'error');
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                console.log('Received:', data);
+                
+                if (data.type === 'package_update') {
+                    const update = data.data;
+                    const message = `
+                        Status: ${update.status}<br>
+                        Location: ${update.location || 'N/A'}<br>
+                        ${update.latitude && update.longitude ? 
+                          `Coordinates: ${update.latitude}, ${update.longitude}<br>` : ''}
+                        Time: ${new Date(update.timestamp).toLocaleString()}
+                    `;
+                    addUpdate(data.tracking_number, message, update.status);
+                }
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function subscribeToPackage() {
+            const trackingNumber = document.getElementById('trackingNumber').value.trim();
+            
+            if (!trackingNumber) {
+                alert('Please enter a tracking number');
+                return;
+            }
+            
+            if (!isConnected) {
+                alert('Please connect first');
+                return;
+            }
+            
+            const message = {
+                type: 'subscribe',
+                tracking_number: trackingNumber
+            };
+            
+            ws.send(JSON.stringify(message));
+            addUpdate('System', `Subscribed to package: ${trackingNumber}`, 'subscribed');
+        }
+
+        function addUpdate(title, message, status) {
+            const updatesDiv = document.getElementById('updates');
+            
+            // Remove "no updates" message if it exists
+            const noUpdates = updatesDiv.querySelector('.no-updates');
+            if (noUpdates) {
+                noUpdates.remove();
+            }
+            
+            const updateItem = document.createElement('div');
+            updateItem.className = 'update-item';
+            updateItem.innerHTML = `
+                <strong>${title}</strong>
+                ${status && status !== 'system' && status !== 'connected' && status !== 'disconnected' && status !== 'error' && status !== 'subscribed' ? 
+                  `<span class="status-badge ${status}">${status.replace('_', ' ').toUpperCase()}</span>` : ''}
+                <div>${message}</div>
+                <div class="timestamp">${new Date().toLocaleString()}</div>
+            `;
+            
+            updatesDiv.insertBefore(updateItem, updatesDiv.firstChild);
+            
+            // Keep only last 20 updates
+            while (updatesDiv.children.length > 20) {
+                updatesDiv.removeChild(updatesDiv.lastChild);
+            }
+        }
+
+        // Enable Enter key to subscribe
+        document.getElementById('trackingNumber').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                subscribeToPackage();
+            }
+        });
+    </script>
+</body>
+</html>

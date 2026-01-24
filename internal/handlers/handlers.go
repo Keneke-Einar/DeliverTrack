@@ -138,9 +138,9 @@ func (h *Handler) UpdatePackageStatus(w http.ResponseWriter, r *http.Request) {
 	trackingNumber := vars["tracking_number"]
 
 	var update struct {
-		Status   string  `json:"status"`
-		Location string  `json:"location"`
-		Latitude float64 `json:"latitude"`
+		Status    string  `json:"status"`
+		Location  string  `json:"location"`
+		Latitude  float64 `json:"latitude"`
 		Longitude float64 `json:"longitude"`
 	}
 
@@ -298,7 +298,7 @@ func (h *Handler) ListPackages(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	health := map[string]interface{}{
-		"status": "healthy",
+		"status":    "healthy",
 		"timestamp": time.Now().Format(time.RFC3339),
 	}
 

@@ -6,15 +6,15 @@ import (
 )
 
 type Config struct {
-	DatabaseURL  string
-	MongoDBURL   string
-	RedisURL     string
+	DatabaseURL   string
+	MongoDBURL    string
+	RedisURL      string
 	RedisPassword string
-	RabbitMQURL  string
-	Port         string
-	Host         string
-	JWTSecret    string
-	Environment  string
+	RabbitMQURL   string
+	Port          string
+	Host          string
+	JWTSecret     string
+	Environment   string
 }
 
 func Load() *Config {
