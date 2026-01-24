@@ -1,5 +1,41 @@
 package main
 
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+var version = "dev"
+
 func main() {
-	// Tracking service entrypoint
+	port := getEnv("SERVICE_PORT", "8081")
+
+	http.HandleFunc("/health", healthHandler)
+	http.HandleFunc("/", rootHandler)
+
+	log.Printf("Tracking service v%s starting on port %s", version, port)
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, `{"status":"ok","service":"tracking"}`)
+}
+
+func rootHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, `{"service":"tracking","version":"%s"}`, version)
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }
