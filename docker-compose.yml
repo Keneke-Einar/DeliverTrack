@@ -1,4 +1,156 @@
 version: '3.8'
 
 services:
-  # TODO: Add service definitions
+  # Delivery Service
+  delivery:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.delivery
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/delivertrack?sslmode=disable
+      - REDIS_URL=redis:6379
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - delivertrack
+
+  # Tracking Service
+  tracking:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.tracking
+    ports:
+      - "8081:8081"
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/delivertrack?sslmode=disable
+      - REDIS_URL=redis:6379
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - delivertrack
+
+  # Notification Service
+  notification:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.notification
+    ports:
+      - "8082:8082"
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/delivertrack?sslmode=disable
+      - REDIS_URL=redis:6379
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - delivertrack
+
+  # Analytics Service
+  analytics:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.analytics
+    ports:
+      - "8083:8083"
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/delivertrack?sslmode=disable
+      - REDIS_URL=redis:6379
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - delivertrack
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=delivertrack
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - delivertrack
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - delivertrack
+
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - delivertrack
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+
+networks:
+  delivertrack:
+    driver: bridge

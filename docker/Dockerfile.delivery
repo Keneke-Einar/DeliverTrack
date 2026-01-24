@@ -1,0 +1,50 @@
+# Build stage
+FROM golang:1.25-alpine AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata
+
+# Copy go mod files first for better caching
+COPY cmd/delivery/go.mod cmd/delivery/go.sum* ./cmd/delivery/
+COPY pkg/ ./pkg/
+COPY internal/ ./internal/
+
+# Download dependencies
+WORKDIR /app/cmd/delivery
+RUN go mod download
+
+# Copy source code
+COPY cmd/delivery/ ./
+
+# Build the binary
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s -X main.version=${VERSION:-dev}" \
+    -o /app/bin/delivery .
+
+# Runtime stage
+FROM alpine:3.20
+
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apk add --no-cache ca-certificates tzdata
+
+# Create non-root user
+RUN addgroup -g 1000 app && adduser -u 1000 -G app -s /bin/sh -D app
+
+# Copy binary from builder
+COPY --from=builder /app/bin/delivery /app/delivery
+
+# Set ownership
+RUN chown -R app:app /app
+
+USER app
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+
+ENTRYPOINT ["/app/delivery"]

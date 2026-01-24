@@ -3,7 +3,7 @@
 ## Day 1-2: Foundation & Core Services
 
 ### Project Setup
-- [ ] Initialize Go modules for 4 services
+- [x] Initialize Go modules for 4 services
 
 ### PostgreSQL Schema
 - [ ] Set up PostgreSQL with schema:
@@ -23,7 +23,7 @@
   - [ ] Admin: full access
 
 ### Testing
-- [ ] Write basic unit tests
+- [ ] CI/CD implementation
 
 ---
 
