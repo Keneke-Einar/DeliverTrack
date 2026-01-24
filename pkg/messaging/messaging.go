@@ -1,0 +1,3 @@
+package messaging
+
+// RabbitMQ client
