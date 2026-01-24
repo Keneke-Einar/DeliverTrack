@@ -32,13 +32,20 @@ jobs:
           done
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
-          args: --timeout=5m
-          skip-cache: true
-          skip-pkg-cache: true
-          skip-build-cache: true
+        run: |
+          # Install golangci-lint
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          
+          # Run lint on each service
+          for dir in cmd/*/; do
+            if [ -f "$dir/go.mod" ]; then
+              echo "Linting $dir"
+              cd "$dir" && golangci-lint run --timeout=5m ./... && cd ../..
+            fi
+          done
+          
+          # Lint shared packages
+          golangci-lint run --timeout=5m ./pkg/... ./internal/...
 
   test:
     name: Test
