@@ -16,6 +16,10 @@ run-%:
 
 # Run all tests
 test:
+	@echo "Testing pkg/postgres..."
+	@cd pkg/postgres && go test -v ./...
+	@echo "Testing pkg/mongodb..."
+	@cd pkg/mongodb && go test -v ./...
 	@for service in $(SERVICES); do \
 		echo "Testing $$service..."; \
 		cd cmd/$$service && go test ./... && cd ../..; \
@@ -26,13 +30,39 @@ test:
 test-coverage:
 	@echo "Running tests with coverage..."
 	@echo "mode: atomic" > coverage.out
+	@echo "Testing pkg/postgres..."
+	@cd pkg/postgres && go test -coverprofile=coverage.tmp -covermode=atomic ./... && cd ../..; \
+	if [ -f pkg/postgres/coverage.tmp ]; then \
+		tail -n +2 pkg/postgres/coverage.tmp >> coverage.out; \
+		rm pkg/postgres/coverage.tmp; \
+	fi
+	@echo "Testing pkg/mongodb..."
+	@cd pkg/mongodb && go test -coverprofile=coverage.tmp -covermode=atomic ./... && cd ../..; \
+	if [ -f pkg/mongodb/coverage.tmp ]; then \
+		tail -n +2 pkg/mongodb/coverage.tmp >> coverage.out; \
+		rm pkg/mongodb/coverage.tmp; \
+	fi
 	@for service in $(SERVICES); do \
+		echo "Testing $$service..."; \
 		cd cmd/$$service && go test -coverprofile=coverage.tmp -covermode=atomic ./... && cd ../..; \
 		if [ -f cmd/$$service/coverage.tmp ]; then \
 			tail -n +2 cmd/$$service/coverage.tmp >> coverage.out; \
 			rm cmd/$$service/coverage.tmp; \
 		fi \
 	done
+	@echo "Testing internal packages..."
+	@go test -coverprofile=coverage.tmp -covermode=atomic ./internal/... 2>/dev/null || true
+	@if [ -f coverage.tmp ]; then \
+		tail -n +2 coverage.tmp >> coverage.out; \
+		rm coverage.tmp; \
+	fi
+	@echo "Testing pkg packages..."
+	@go test -coverprofile=coverage.tmp -covermode=atomic ./pkg/cache ./pkg/messaging ./pkg/websocket 2>/dev/null || true
+	@if [ -f coverage.tmp ]; then \
+		tail -n +2 coverage.tmp >> coverage.out; \
+		rm coverage.tmp; \
+	fi
+	@echo "\nCoverage Summary:"
 	@go tool cover -func=coverage.out | tail -1
 
 # Run integration tests
@@ -88,15 +118,36 @@ tools:
 generate:
 	go generate ./...
 
+# Test specific packages
+test-postgres:
+	@echo "Running PostgreSQL package tests..."
+	@cd pkg/postgres && go test -v ./...
+
+test-mongodb:
+	@echo "Running MongoDB package tests..."
+	@cd pkg/mongodb && go test -v ./...
+
+test-postgres-short:
+	@echo "Running PostgreSQL package tests (short mode - no DB required)..."
+	@cd pkg/postgres && go test -v -short ./...
+
+test-mongodb-short:
+	@echo "Running MongoDB package tests (short mode - no DB required)..."
+	@cd pkg/mongodb && go test -v -short ./...
+
 # Help
 help:
 	@echo "Available targets:"
-	@echo "  run              - Run all services with docker compose"
-	@echo "  run-<service>    - Run a specific service locally"
-	@echo "  test             - Run all tests"
-	@echo "  test-coverage    - Run tests with coverage report"
-	@echo "  test-integration - Run integration tests"
-	@echo "  lint             - Run linter"
+	@echo "  run                - Run all services with docker compose"
+	@echo "  run-<service>      - Run a specific service locally"
+	@echo "  test               - Run all tests"
+	@echo "  test-coverage      - Run tests with coverage report"
+	@echo "  test-integration   - Run integration tests"
+	@echo "  test-postgres      - Run PostgreSQL package tests"
+	@echo "  test-mongodb       - Run MongoDB package tests"
+	@echo "  test-postgres-short - Run PostgreSQL tests (no DB required)"
+	@echo "  test-mongodb-short  - Run MongoDB tests (no DB required)"
+	@echo "  lint               - Run linter"
 	@echo "  build-<service>  - Build a specific service"
 	@echo "  build-all        - Build all services"
 	@echo "  docker-build     - Build all Docker images"

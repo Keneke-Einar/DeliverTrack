@@ -60,6 +60,19 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      mongodb:
+        image: mongo:7-jammy
+        env:
+          MONGO_INITDB_ROOT_USERNAME: admin
+          MONGO_INITDB_ROOT_PASSWORD: test
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
       redis:
         image: redis:7
         ports:
@@ -101,6 +114,7 @@ jobs:
         run: make test-coverage
         env:
           DATABASE_URL: postgres://test:test@localhost:5432/delivertrack_test?sslmode=disable
+          MONGODB_URI: mongodb://admin:test@localhost:27017
           REDIS_URL: localhost:6379
 
       - name: Upload coverage report
