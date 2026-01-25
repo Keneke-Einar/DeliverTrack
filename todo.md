@@ -6,10 +6,10 @@
 - [x] Initialize Go modules for 4 services
 
 ### PostgreSQL Schema
-- [ ] Set up PostgreSQL with schema:
-  - [ ] `deliveries` (id, customer_id, courier_id, status, etc.)
-  - [ ] `couriers` (id, name, vehicle_type, current_location)
-  - [ ] `customers` (id, name, address, contact)
+- [x] Set up PostgreSQL with schema:
+  - [x] `deliveries` (id, customer_id, courier_id, status, etc.)
+  - [x] `couriers` (id, name, vehicle_type, current_location)
+  - [x] `customers` (id, name, address, contact)
 
 ### MongoDB Geospatial Setup
 - [ ] Set up MongoDB for geospatial data:
@@ -23,7 +23,7 @@
   - [ ] Admin: full access
 
 ### Testing
-- [ ] CI/CD implementation
+- [x] CI/CD implementation
 
 ---
 
