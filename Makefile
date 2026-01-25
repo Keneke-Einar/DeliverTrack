@@ -103,3 +103,26 @@ help:
 	@echo "  docker-push      - Push all Docker images"
 	@echo "  clean            - Clean build artifacts"
 	@echo "  tools            - Install development tools"
+	@echo "  mongo-shell      - Connect to MongoDB shell"
+	@echo "  mongo-test       - Test MongoDB geospatial setup"
+	@echo "  mongo-backup     - Backup MongoDB data"
+
+# MongoDB operations
+mongo-shell:
+	mongosh mongodb://admin:admin123@localhost:27017/delivertrack?authSource=admin
+
+mongo-test:
+	./scripts/test-mongodb.sh
+
+mongo-backup:
+	@echo "Creating MongoDB backup..."
+	@mkdir -p backups
+	mongodump --uri="mongodb://admin:admin123@localhost:27017/delivertrack?authSource=admin" --out=backups/mongo-$(shell date +%Y%m%d-%H%M%S)
+	@echo "Backup created in backups/"
+
+mongo-restore:
+	@echo "Restoring MongoDB from latest backup..."
+	@LATEST=$$(ls -td backups/mongo-* | head -1); \
+	mongorestore --uri="mongodb://admin:admin123@localhost:27017/delivertrack?authSource=admin" $$LATEST
+	@echo "Restore complete"
+

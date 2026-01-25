@@ -12,9 +12,9 @@
   - [x] `customers` (id, name, address, contact)
 
 ### MongoDB Geospatial Setup
-- [ ] Set up MongoDB for geospatial data:
-  - [ ] `courier_locations` (GeoJSON with timestamps)
-  - [ ] `delivery_zones` (polygons for geofencing)
+- [x] Set up MongoDB for geospatial data:
+  - [x] `courier_locations` (GeoJSON with timestamps)
+  - [x] `delivery_zones` (polygons for geofencing)
 
 ### Authentication
 - [ ] Implement JWT authentication with 3 roles:

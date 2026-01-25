@@ -10,10 +10,13 @@ services:
       - "8080:8080"
     environment:
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/delivertrack?sslmode=disable
+      - MONGODB_URL=mongodb://admin:admin123@mongodb:27017/delivertrack?authSource=admin
       - REDIS_URL=redis:6379
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
     depends_on:
       postgres:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -32,10 +35,13 @@ services:
       - "8081:8081"
     environment:
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/delivertrack?sslmode=disable
+      - MONGODB_URL=mongodb://admin:admin123@mongodb:27017/delivertrack?authSource=admin
       - REDIS_URL=redis:6379
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
     depends_on:
       postgres:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -54,10 +60,13 @@ services:
       - "8082:8082"
     environment:
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/delivertrack?sslmode=disable
+      - MONGODB_URL=mongodb://admin:admin123@mongodb:27017/delivertrack?authSource=admin
       - REDIS_URL=redis:6379
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
     depends_on:
       postgres:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -76,10 +85,13 @@ services:
       - "8083:8083"
     environment:
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/delivertrack?sslmode=disable
+      - MONGODB_URL=mongodb://admin:admin123@mongodb:27017/delivertrack?authSource=admin
       - REDIS_URL=redis:6379
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
     depends_on:
       postgres:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -146,10 +158,32 @@ services:
     networks:
       - delivertrack
 
+  # MongoDB for Geospatial Data
+  mongodb:
+    image: mongo:7-jammy
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin123
+      - MONGO_INITDB_DATABASE=delivertrack
+    volumes:
+      - mongodb_data:/data/db
+      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - delivertrack
+
 volumes:
   postgres_data:
   redis_data:
   rabbitmq_data:
+  mongodb_data:
 
 networks:
   delivertrack:
