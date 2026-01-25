@@ -17,10 +17,10 @@
   - [x] `delivery_zones` (polygons for geofencing)
 
 ### Authentication
-- [ ] Implement JWT authentication with 3 roles:
-  - [ ] Customer: create/view own deliveries
-  - [ ] Courier: update location/status
-  - [ ] Admin: full access
+- [x] Implement JWT authentication with 3 roles:
+  - [x] Customer: create/view own deliveries
+  - [x] Courier: update location/status
+  - [x] Admin: full access
 
 ### Testing
 - [x] CI/CD implementation
