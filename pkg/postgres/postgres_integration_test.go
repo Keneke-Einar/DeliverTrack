@@ -193,12 +193,13 @@ func TestIntegration_Concurrency(t *testing.T) {
 	}
 	defer db.Close()
 
-	// Create temp table
+	// Create regular table (not TEMP, as concurrent goroutines use different connections)
 	tableName := "test_concurrent_" + time.Now().Format("20060102150405")
-	_, err = db.Exec("CREATE TEMP TABLE " + tableName + " (id SERIAL PRIMARY KEY, value INT)")
+	_, err = db.Exec("CREATE TABLE " + tableName + " (id SERIAL PRIMARY KEY, value INT)")
 	if err != nil {
 		t.Fatalf("Failed to create table: %v", err)
 	}
+	defer db.Exec("DROP TABLE IF EXISTS " + tableName)
 
 	// Run concurrent inserts
 	concurrency := 10
