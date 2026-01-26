@@ -30,11 +30,11 @@
 ## Day 3-4: Delivery & Tracking Logic
 
 ### Delivery Service
-- [ ] Implement delivery service:
-  - [ ] `POST /deliveries` (create new delivery - REST API)
-  - [ ] `GET /deliveries/:id` (track status - REST API)
-  - [ ] `PUT /deliveries/:id/status` (update status - REST API)
-  - [ ] `GET /deliveries?status=active` (filtering - REST API)
+- [x] Implement delivery service:
+  - [x] `POST /deliveries` (create new delivery - REST API)
+  - [x] `GET /deliveries/:id` (track status - REST API)
+  - [x] `PUT /deliveries/:id/status` (update status - REST API)
+  - [x] `GET /deliveries?status=active` (filtering - REST API)
 
 ### Tracking Service
 - [ ] Create tracking service:

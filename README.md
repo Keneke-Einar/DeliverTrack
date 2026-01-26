@@ -9,6 +9,7 @@ A microservices-based delivery tracking platform built with Golang, featuring re
 | Category | Technology |
 |----------|------------|
 | **Language** | Golang |
+| **Architecture** | Hexagonal (Ports & Adapters) |
 | **Primary Database** | PostgreSQL |
 | **Geospatial Database** | MongoDB |
 | **Cache** | Redis |
@@ -19,6 +20,8 @@ A microservices-based delivery tracking platform built with Golang, featuring re
 | **Analytics** | GraphQL |
 
 ## 🏗️ Architecture
+
+### Service Architecture
 
 DeliverTrack consists of 4 core microservices:
 
@@ -40,6 +43,18 @@ DeliverTrack consists of 4 core microservices:
                     │   Analytics   │
                     │   Service     │
                     └───────────────┘
+```
+
+### Layered Architecture (Hexagonal)
+
+Each service follows a layered architecture with clear separation of concerns:
+
+```
+Service Structure:
+├── domain/      # Business entities & rules (pure logic)
+├── app/         # Use cases & orchestration
+├── ports/       # Interfaces (contracts)
+└── adapters/    # Infrastructure (HTTP, DB, JWT, etc.)
 ```
 
 ## 📊 Database Schema
