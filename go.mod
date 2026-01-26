@@ -4,6 +4,7 @@ go 1.25.5
 
 require (
 	github.com/golang-jwt/jwt/v5 v5.2.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/lib/pq v1.10.9
 	go.mongodb.org/mongo-driver v1.17.7
 	golang.org/x/crypto v0.26.0
@@ -11,7 +12,6 @@ require (
 
 require (
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect

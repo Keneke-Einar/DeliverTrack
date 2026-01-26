@@ -88,11 +88,10 @@
   - [ ] `delivery.completed` event
 
 ### WebSocket Server
-- [x] Create WebSocket package skeleton
-- [ ] Implement WebSocket server:
-  - [ ] Handle multiple concurrent connections
-  - [ ] Broadcast location updates to relevant clients
-  - [ ] Connection pooling and heartbeat mechanism
+- [x] Implement WebSocket server:
+  - [x] Handle multiple concurrent connections
+  - [x] Broadcast location updates to relevant clients
+  - [x] Connection pooling and heartbeat mechanism
 
 ### Notification Service
 - [x] Create notification service skeleton (basic REST endpoints)
