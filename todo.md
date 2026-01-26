@@ -37,10 +37,12 @@
   - [x] `GET /deliveries?status=active` (filtering - REST API)
 
 ### Tracking Service
-- [ ] Create tracking service:
+- [x] Create tracking service skeleton (basic REST endpoints)
+- [ ] Implement tracking features:
   - [ ] `POST /locations` (courier location updates - REST API)
   - [ ] WebSocket endpoint for live tracking
   - [ ] ETA calculation using distance matrices
+  - [ ] MongoDB geospatial queries for location tracking
 
 ### gRPC Setup for Inter-Service Communication
 - [x] Define proto files:
@@ -76,23 +78,28 @@
 ## Day 5-6: Real-Time & Event Processing
 
 ### RabbitMQ Events
-- [ ] Set up RabbitMQ for event-driven architecture:
-  - [ ] `delivery.created`
-  - [ ] `location.updated`
-  - [ ] `status.changed`
-  - [ ] `delivery.completed`
+- [x] Set up RabbitMQ infrastructure (docker-compose)
+- [x] Create messaging package skeleton
+- [ ] Implement event-driven architecture:
+  - [ ] `delivery.created` event
+  - [ ] `location.updated` event
+  - [ ] `status.changed` event
+  - [ ] `delivery.completed` event
 
 ### WebSocket Server
+- [x] Create WebSocket package skeleton
 - [ ] Implement WebSocket server:
   - [ ] Handle multiple concurrent connections
   - [ ] Broadcast location updates to relevant clients
   - [ ] Connection pooling and heartbeat mechanism
 
 ### Notification Service
-- [ ] Create notification service:
+- [x] Create notification service skeleton (basic REST endpoints)
+- [ ] Implement notification features:
   - [ ] WebSocket notifications to customers
   - [ ] SMS/email for status updates
   - [ ] Push notifications for mobile apps
+  - [ ] Event-driven notification triggers
 
 ### Geofencing
 - [ ] Add geofencing with MongoDB:
@@ -104,10 +111,13 @@
 ## Day 7-8: Advanced Features & Optimization
 
 ### Redis Caching
+- [x] Set up Redis infrastructure (docker-compose)
+- [x] Create cache package skeleton
 - [ ] Implement Redis caching:
   - [ ] Cache active delivery details
   - [ ] Cache courier locations (15s TTL)
   - [ ] Cache customer delivery history
+  - [ ] Cache invalidation strategies
 
 ### Batch Processing
 - [ ] Add batch processing:
@@ -132,9 +142,11 @@
 ## Day 9-10: DevOps, Monitoring & Analytics
 
 ### Docker
-- [ ] Dockerize all services with health checks (REST + gRPC ports)
-- [ ] Create `docker-compose.yml` with all dependencies
+- [x] Dockerize all services with health checks (REST ports)
+- [x] Create `docker-compose.yml` with all dependencies (PostgreSQL, MongoDB, Redis, RabbitMQ)
+- [ ] Add gRPC ports configuration
 - [ ] Configure service mesh networking for gRPC communication
+- [ ] Optimize Docker images for production
 
 ### Logging
 - [ ] Add structured logging (Zap + correlation IDs)
@@ -153,11 +165,13 @@
 - [ ] Create Grafana dashboard for operations
 
 ### Analytics Service
-- [ ] Add analytics service with GraphQL:
+- [x] Create analytics service skeleton (basic REST endpoints)
+- [ ] Implement analytics features:
   - [ ] Delivery success rates
   - [ ] Courier efficiency metrics
   - [ ] Peak delivery times
   - [ ] Customer satisfaction scores
+- [ ] Add GraphQL API (optional)
 
 ---
 
