@@ -1,9 +1,0 @@
-go 1.25.5
-
-use (
-	.
-	./internal/delivery
-	./pkg/auth
-	./pkg/mongodb
-	./pkg/postgres
-)
