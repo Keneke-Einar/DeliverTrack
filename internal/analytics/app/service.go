@@ -36,10 +36,8 @@ func (s *AnalyticsService) RecordMetric(
 	}
 
 	// Add metadata if provided
-	if metadata != nil {
-		for key, val := range metadata {
-			metric.AddMetadata(key, val)
-		}
+	for key, val := range metadata {
+		metric.AddMetadata(key, val)
 	}
 
 	// Persist to repository
