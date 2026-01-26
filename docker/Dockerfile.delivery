@@ -7,13 +7,15 @@ WORKDIR /app
 RUN apk add --no-cache git ca-certificates tzdata
 
 # Copy go mod files first for better caching
-COPY cmd/delivery/go.mod cmd/delivery/go.sum* ./cmd/delivery/
+COPY go.mod go.sum ./
 COPY pkg/ ./pkg/
 COPY internal/ ./internal/
 
 # Download dependencies
-WORKDIR /app/cmd/delivery
 RUN go mod download
+
+# Set workdir for building
+WORKDIR /app/cmd/delivery
 
 # Copy source code
 COPY cmd/delivery/ ./

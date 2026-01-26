@@ -7,13 +7,15 @@ WORKDIR /app
 RUN apk add --no-cache git ca-certificates tzdata
 
 # Copy go mod files first for better caching
-COPY cmd/tracking/go.mod cmd/tracking/go.sum* ./cmd/tracking/
+COPY go.mod go.sum ./
 COPY pkg/ ./pkg/
 COPY internal/ ./internal/
 
 # Download dependencies
-WORKDIR /app/cmd/tracking
 RUN go mod download
+
+# Set workdir for building
+WORKDIR /app/cmd/tracking
 
 # Copy source code
 COPY cmd/tracking/ ./
