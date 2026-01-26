@@ -11,19 +11,16 @@ COPY internal/ ./internal/
 # Download dependencies
 RUN go mod download
 
-# Set workdir for building
-WORKDIR /app/cmd/tracking
-
 # Set default version
 ENV VERSION=dev
 
 # Copy source code
-COPY cmd/tracking/ ./
+COPY cmd/ ./cmd/
 
 # Build the binary
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags="-w -s -X main.version=${VERSION}" \
-    -o /app/bin/tracking .
+    -o /app/bin/tracking ./cmd/tracking
 
 # Runtime stage
 FROM debian:bookworm-slim
