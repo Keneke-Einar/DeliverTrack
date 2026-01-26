@@ -24,6 +24,7 @@
 
 ### Testing
 - [x] CI/CD implementation
+- [x] Comprehensive tracking service tests (unit & integration)
 
 ---
 
@@ -38,11 +39,11 @@
 
 ### Tracking Service
 - [x] Create tracking service skeleton (basic REST endpoints)
-- [ ] Implement tracking features:
-  - [ ] `POST /locations` (courier location updates - REST API)
-  - [ ] WebSocket endpoint for live tracking
-  - [ ] ETA calculation using distance matrices
-  - [ ] MongoDB geospatial queries for location tracking
+- [x] Implement tracking features:
+  - [x] `POST /locations` (courier location updates - REST API)
+  - [x] WebSocket endpoint for live tracking
+  - [x] ETA calculation using distance matrices
+  - [x] MongoDB geospatial queries for location tracking
 
 ### gRPC Setup for Inter-Service Communication
 - [x] Define proto files:

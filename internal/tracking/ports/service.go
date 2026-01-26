@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/domain"
 )
@@ -34,6 +35,20 @@ type GetCourierLocationRequest struct {
 	CourierID int `json:"courier_id"`
 }
 
+// CalculateETAToDestinationRequest for calculating ETA to destination
+type CalculateETAToDestinationRequest struct {
+	DeliveryID  int     `json:"delivery_id"`
+	DestLat     float64 `json:"dest_lat"`
+	DestLng     float64 `json:"dest_lng"`
+}
+
+// CalculateETAResponse for ETA calculation response
+type CalculateETAResponse struct {
+	ETA         time.Duration `json:"eta"`
+	DistanceKm  float64       `json:"distance_km"`
+	AverageSpeed float64      `json:"average_speed_kmh"`
+}
+
 // TrackingService defines the interface for tracking business operations
 type TrackingService interface {
 	// RecordLocation records a new location point
@@ -47,4 +62,7 @@ type TrackingService interface {
 
 	// GetCourierLocation retrieves the current location for a courier
 	GetCourierLocation(ctx context.Context, req GetCourierLocationRequest) (*domain.Location, error)
+
+	// CalculateETAToDestination calculates ETA from current location to destination
+	CalculateETAToDestination(ctx context.Context, req CalculateETAToDestinationRequest) (*CalculateETAResponse, error)
 }
