@@ -22,25 +22,19 @@ func NewDeliveryService(repo ports.DeliveryRepository) *DeliveryService {
 }
 
 // CreateDelivery creates a new delivery
-func (s *DeliveryService) CreateDelivery(
-	ctx context.Context,
-	customerID int,
-	courierID *int,
-	pickupLocation, deliveryLocation, notes string,
-	scheduledDate *string,
-) (*domain.Delivery, error) {
+func (s *DeliveryService) CreateDelivery(ctx context.Context, req ports.CreateDeliveryRequest) (*domain.Delivery, error) {
 	// Create domain entity with validation
-	delivery, err := domain.NewDelivery(customerID, pickupLocation, deliveryLocation)
+	delivery, err := domain.NewDelivery(req.CustomerID, req.PickupLocation, req.DeliveryLocation)
 	if err != nil {
 		return nil, err
 	}
 
 	// Set optional fields
-	delivery.CourierID = courierID
-	delivery.Notes = notes
+	delivery.CourierID = req.CourierID
+	delivery.Notes = req.Notes
 
-	if scheduledDate != nil && *scheduledDate != "" {
-		parsedDate, err := time.Parse(time.RFC3339, *scheduledDate)
+	if req.ScheduledDate != nil && *req.ScheduledDate != "" {
+		parsedDate, err := time.Parse(time.RFC3339, *req.ScheduledDate)
 		if err != nil {
 			return nil, fmt.Errorf("invalid scheduled_date format: %w", err)
 		}
@@ -56,19 +50,14 @@ func (s *DeliveryService) CreateDelivery(
 }
 
 // GetDelivery retrieves a delivery by ID with authorization
-func (s *DeliveryService) GetDelivery(
-	ctx context.Context,
-	id int,
-	role string,
-	customerID, courierID *int,
-) (*domain.Delivery, error) {
-	delivery, err := s.repo.GetByID(ctx, id)
+func (s *DeliveryService) GetDelivery(ctx context.Context, req ports.GetDeliveryRequest) (*domain.Delivery, error) {
+	delivery, err := s.repo.GetByID(ctx, req.ID)
 	if err != nil {
 		return nil, err
 	}
 
 	// Check authorization
-	if !delivery.CanBeModifiedBy(role, customerID, courierID) {
+	if !delivery.CanBeModifiedBy(req.Role, req.UserCustomerID, req.UserCourierID) {
 		return nil, domain.ErrUnauthorized
 	}
 
@@ -76,24 +65,18 @@ func (s *DeliveryService) GetDelivery(
 }
 
 // ListDeliveries lists deliveries with optional filters and authorization
-func (s *DeliveryService) ListDeliveries(
-	ctx context.Context,
-	status string,
-	customerID int,
-	role string,
-	userCustomerID, userCourierID *int,
-) ([]*domain.Delivery, error) {
+func (s *DeliveryService) ListDeliveries(ctx context.Context, req ports.ListDeliveriesRequest) ([]*domain.Delivery, error) {
 	// Apply authorization filters
-	filterCustomerID := customerID
-	if role == "customer" && userCustomerID != nil {
-		filterCustomerID = *userCustomerID
+	filterCustomerID := req.CustomerID
+	if req.Role == "customer" && req.UserCustomerID != nil {
+		filterCustomerID = *req.UserCustomerID
 	}
 
 	var deliveries []*domain.Delivery
 	var err error
 
-	if status != "" {
-		deliveries, err = s.repo.GetByStatus(ctx, status, filterCustomerID)
+	if req.Status != "" {
+		deliveries, err = s.repo.GetByStatus(ctx, req.Status, filterCustomerID)
 	} else {
 		deliveries, err = s.repo.GetAll(ctx, filterCustomerID)
 	}
@@ -103,10 +86,10 @@ func (s *DeliveryService) ListDeliveries(
 	}
 
 	// Filter results based on authorization
-	if role == "courier" && userCourierID != nil {
+	if req.Role == "courier" && req.UserCourierID != nil {
 		filtered := make([]*domain.Delivery, 0)
 		for _, d := range deliveries {
-			if d.CourierID != nil && *d.CourierID == *userCourierID {
+			if d.CourierID != nil && *d.CourierID == *req.UserCourierID {
 				filtered = append(filtered, d)
 			}
 		}
@@ -117,29 +100,23 @@ func (s *DeliveryService) ListDeliveries(
 }
 
 // UpdateDeliveryStatus updates a delivery status with authorization
-func (s *DeliveryService) UpdateDeliveryStatus(
-	ctx context.Context,
-	id int,
-	status, notes string,
-	role string,
-	customerID, courierID *int,
-) error {
+func (s *DeliveryService) UpdateDeliveryStatus(ctx context.Context, req ports.UpdateDeliveryStatusRequest) error {
 	// Get delivery to check authorization
-	delivery, err := s.repo.GetByID(ctx, id)
+	delivery, err := s.repo.GetByID(ctx, req.ID)
 	if err != nil {
 		return err
 	}
 
 	// Check authorization
-	if !delivery.CanBeModifiedBy(role, customerID, courierID) {
+	if !delivery.CanBeModifiedBy(req.Role, req.UserCustomerID, req.UserCourierID) {
 		return domain.ErrUnauthorized
 	}
 
 	// Validate and update status in domain entity
-	if err := delivery.UpdateStatus(status); err != nil {
+	if err := delivery.UpdateStatus(req.Status); err != nil {
 		return err
 	}
 
 	// Persist the update
-	return s.repo.UpdateStatus(ctx, id, status, notes)
+	return s.repo.UpdateStatus(ctx, req.ID, req.Status, req.Notes)
 }

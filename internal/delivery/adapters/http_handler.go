@@ -21,16 +21,6 @@ func NewHTTPHandler(service ports.DeliveryService) *HTTPHandler {
 	}
 }
 
-// CreateDeliveryRequest represents the request payload for creating a delivery
-type CreateDeliveryRequest struct {
-	CustomerID       int     `json:"customer_id"`
-	CourierID        *int    `json:"courier_id,omitempty"`
-	PickupLocation   string  `json:"pickup_location"`
-	DeliveryLocation string  `json:"delivery_location"`
-	ScheduledDate    *string `json:"scheduled_date,omitempty"`
-	Notes            string  `json:"notes,omitempty"`
-}
-
 // UpdateStatusRequest represents the request payload for updating delivery status
 type UpdateStatusRequest struct {
 	Status string `json:"status"`
@@ -50,7 +40,7 @@ func (h *HTTPHandler) CreateDelivery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req CreateDeliveryRequest
+	var req ports.CreateDeliveryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		sendErrorResponse(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -73,15 +63,7 @@ func (h *HTTPHandler) CreateDelivery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create delivery
-	delivery, err := h.service.CreateDelivery(
-		r.Context(),
-		req.CustomerID,
-		req.CourierID,
-		req.PickupLocation,
-		req.DeliveryLocation,
-		req.Notes,
-		req.ScheduledDate,
-	)
+	delivery, err := h.service.CreateDelivery(r.Context(), req)
 	if err != nil {
 		sendErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -113,7 +95,14 @@ func (h *HTTPHandler) GetDelivery(w http.ResponseWriter, r *http.Request) {
 	courierID, _ := r.Context().Value("courier_id").(*int)
 
 	// Get delivery
-	delivery, err := h.service.GetDelivery(r.Context(), id, userRole, customerID, courierID)
+	delivery, err := h.service.GetDelivery(r.Context(), ports.GetDeliveryRequest{
+		ID: id,
+		AuthContext: ports.AuthContext{
+			Role:           userRole,
+			UserCustomerID: customerID,
+			UserCourierID:  courierID,
+		},
+	})
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		if err.Error() == "unauthorized access" {
@@ -156,7 +145,15 @@ func (h *HTTPHandler) ListDeliveries(w http.ResponseWriter, r *http.Request) {
 	courierID, _ := r.Context().Value("courier_id").(*int)
 
 	// List deliveries
-	deliveries, err := h.service.ListDeliveries(r.Context(), status, filterCustomerID, userRole, customerID, courierID)
+	deliveries, err := h.service.ListDeliveries(r.Context(), ports.ListDeliveriesRequest{
+		Status:     status,
+		CustomerID: filterCustomerID,
+		AuthContext: ports.AuthContext{
+			Role:           userRole,
+			UserCustomerID: customerID,
+			UserCourierID:  courierID,
+		},
+	})
 	if err != nil {
 		sendErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -199,7 +196,16 @@ func (h *HTTPHandler) UpdateDeliveryStatus(w http.ResponseWriter, r *http.Reques
 	courierID, _ := r.Context().Value("courier_id").(*int)
 
 	// Update status
-	err = h.service.UpdateDeliveryStatus(r.Context(), id, req.Status, req.Notes, userRole, customerID, courierID)
+	err = h.service.UpdateDeliveryStatus(r.Context(), ports.UpdateDeliveryStatusRequest{
+		ID:     id,
+		Status: req.Status,
+		Notes:  req.Notes,
+		AuthContext: ports.AuthContext{
+			Role:           userRole,
+			UserCustomerID: customerID,
+			UserCourierID:  courierID,
+		},
+	})
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		if err.Error() == "unauthorized access" {
