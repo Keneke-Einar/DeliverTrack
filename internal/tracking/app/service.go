@@ -21,20 +21,15 @@ func NewTrackingService(repo ports.LocationRepository) *TrackingService {
 }
 
 // RecordLocation records a new location point
-func (s *TrackingService) RecordLocation(
-	ctx context.Context,
-	deliveryID, courierID int,
-	latitude, longitude float64,
-	accuracy, speed, heading, altitude *float64,
-) (*domain.Location, error) {
+func (s *TrackingService) RecordLocation(ctx context.Context, req ports.RecordLocationRequest) (*domain.Location, error) {
 	// Create domain entity with validation
-	location, err := domain.NewLocation(deliveryID, courierID, latitude, longitude)
+	location, err := domain.NewLocation(req.DeliveryID, req.CourierID, req.Latitude, req.Longitude)
 	if err != nil {
 		return nil, err
 	}
 
 	// Set optional fields
-	location.SetOptionalFields(accuracy, speed, heading, altitude)
+	location.SetOptionalFields(req.Accuracy, req.Speed, req.Heading, req.Altitude)
 
 	// Persist to repository
 	if err := s.repo.Create(ctx, location); err != nil {
@@ -45,20 +40,21 @@ func (s *TrackingService) RecordLocation(
 }
 
 // GetDeliveryTrack retrieves the tracking history for a delivery
-func (s *TrackingService) GetDeliveryTrack(ctx context.Context, deliveryID int, limit int) ([]*domain.Location, error) {
+func (s *TrackingService) GetDeliveryTrack(ctx context.Context, req ports.GetDeliveryTrackRequest) ([]*domain.Location, error) {
+	limit := req.Limit
 	if limit <= 0 {
 		limit = 100 // default limit
 	}
 
-	return s.repo.GetByDeliveryID(ctx, deliveryID, limit)
+	return s.repo.GetByDeliveryID(ctx, req.DeliveryID, limit)
 }
 
 // GetCurrentLocation retrieves the current location for a delivery
-func (s *TrackingService) GetCurrentLocation(ctx context.Context, deliveryID int) (*domain.Location, error) {
-	return s.repo.GetLatestByDeliveryID(ctx, deliveryID)
+func (s *TrackingService) GetCurrentLocation(ctx context.Context, req ports.GetCurrentLocationRequest) (*domain.Location, error) {
+	return s.repo.GetLatestByDeliveryID(ctx, req.DeliveryID)
 }
 
 // GetCourierLocation retrieves the current location for a courier
-func (s *TrackingService) GetCourierLocation(ctx context.Context, courierID int) (*domain.Location, error) {
-	return s.repo.GetLatestByCourierID(ctx, courierID)
+func (s *TrackingService) GetCourierLocation(ctx context.Context, req ports.GetCourierLocationRequest) (*domain.Location, error) {
+	return s.repo.GetLatestByCourierID(ctx, req.CourierID)
 }
