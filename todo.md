@@ -1,9 +1,21 @@
 # DeliverTrack - Development Todo List
 
-## Day 1-2: Foundation & Core Services
+## Foundation & Core Services
 
 ### Project Setup
 - [x] Initialize Go modules for 4 services
+- [x] Create Makefile with common commands (build, test, run, migrate)
+- [x] Set up project structure and directories
+- [ ] Add environment configuration management
+- [ ] Add secrets management (vault or similar)
+
+### API Gateway
+- [ ] Implement API Gateway:
+  - [ ] Request routing to appropriate services
+  - [ ] Authentication middleware integration
+  - [ ] Rate limiting at gateway level
+  - [ ] Request/response logging
+  - [ ] Health check endpoints
 
 ### PostgreSQL Schema
 - [x] Set up PostgreSQL with schema:
@@ -25,10 +37,23 @@
 ### Testing
 - [x] CI/CD implementation
 - [x] Comprehensive tracking service tests (unit & integration)
+- [ ] Add integration tests for all services
+- [ ] Add end-to-end testing
+- [ ] Add performance/load testing framework
+
+### Documentation
+- [x] Create README.md with comprehensive setup instructions
+- [x] Add API documentation
+- [ ] Add architecture diagrams
+- [ ] Add deployment guides
+- [ ] Add troubleshooting guides
+- [ ] Add integration tests for all services
+- [ ] Add end-to-end testing
+- [ ] Add performance/load testing framework
 
 ---
 
-## Day 3-4: Delivery & Tracking Logic
+## Delivery & Tracking Logic
 
 ### Delivery Service
 - [x] Implement delivery service:
@@ -51,7 +76,7 @@
   - [x] `tracking.proto` (TrackingService RPC methods)
   - [x] `notification.proto` (NotificationService RPC methods)
   - [x] `analytics.proto` (AnalyticsService RPC methods)
-- [ ] Generate gRPC code for all services
+- [x] Generate gRPC code for all services
 - [ ] Implement gRPC servers:
   - [ ] Delivery service gRPC server (port 50051)
   - [ ] Tracking service gRPC server (port 50052)
@@ -76,7 +101,7 @@
 
 ---
 
-## Day 5-6: Real-Time & Event Processing
+## Real-Time & Event Processing
 
 ### RabbitMQ Events
 - [x] Set up RabbitMQ infrastructure (docker-compose)
@@ -105,19 +130,23 @@
 - [ ] Add geofencing with MongoDB:
   - [ ] `$geoWithin` queries for zone detection
   - [ ] Trigger events on zone entry/exit
+  - [ ] Define delivery zones (polygons)
+  - [ ] Zone-based notifications
+  - [ ] Courier zone assignment logic
 
 ---
 
-## Day 7-8: Advanced Features & Optimization
+## Advanced Features & Optimization
 
 ### Redis Caching
 - [x] Set up Redis infrastructure (docker-compose)
 - [x] Create cache package skeleton
 - [ ] Implement Redis caching:
-  - [ ] Cache active delivery details
+  - [ ] Cache active delivery details (dynamic TTL)
   - [ ] Cache courier locations (15s TTL)
-  - [ ] Cache customer delivery history
+  - [ ] Cache customer delivery history (long TTL)
   - [ ] Cache invalidation strategies
+  - [ ] Cache warming on startup
 
 ### Batch Processing
 - [ ] Add batch processing:
@@ -139,17 +168,22 @@
 
 ---
 
-## Day 9-10: DevOps, Monitoring & Analytics
+## DevOps, Monitoring & Analytics
 
 ### Docker
 - [x] Dockerize all services with health checks (REST ports)
 - [x] Create `docker-compose.yml` with all dependencies (PostgreSQL, MongoDB, Redis, RabbitMQ)
+- [ ] Add API Gateway to docker-compose
 - [ ] Add gRPC ports configuration
 - [ ] Configure service mesh networking for gRPC communication
 - [ ] Optimize Docker images for production
 
 ### Logging
-- [ ] Add structured logging (Zap + correlation IDs)
+- [ ] Add structured logging (Zap + correlation IDs):
+  - [ ] Request/response logging with correlation IDs
+  - [ ] Error logging with stack traces
+  - [ ] Performance logging (response times)
+  - [ ] Audit logging for sensitive operations
 
 ### Prometheus Metrics
 - [ ] Implement Prometheus metrics:
@@ -171,16 +205,31 @@
   - [ ] Courier efficiency metrics
   - [ ] Peak delivery times
   - [ ] Customer satisfaction scores
-- [ ] Add GraphQL API (optional)
+- [ ] Add GraphQL API:
+  - [ ] GraphQL schema definition
+  - [ ] Query resolvers for analytics data
+  - [ ] GraphQL playground interface
+  - [ ] Complex query support (filtering, aggregation)
 
 ---
 
-## Optional Extension (Day 11-12)
+## Optional Extension
 
+### Advanced Resilience
 - [ ] Add Circuit Breaker for external mapping APIs
+- [ ] Implement retry mechanisms with exponential backoff
+
+### Advanced Features
 - [ ] Implement A/B testing for routing algorithms
 - [ ] Add load testing scenarios (REST + gRPC)
-- [ ] Create admin dashboard with real-time map
 - [ ] Implement gRPC streaming for real-time location updates
+
+### Service Discovery & Load Balancing
 - [ ] Add service discovery (Consul/etcd) for dynamic gRPC endpoints
 - [ ] Implement gRPC load balancing strategies
+- [ ] Configure service mesh networking
+
+### Admin & Monitoring
+- [ ] Create admin dashboard with real-time map
+- [ ] Add real-time metrics visualization
+- [ ] Implement alerting system
