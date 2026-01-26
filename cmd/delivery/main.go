@@ -12,9 +12,9 @@ import (
 	deliveryAdapters "github.com/keneke/delivertrack/internal/delivery/adapters"
 	deliveryApp "github.com/keneke/delivertrack/internal/delivery/app"
 
-	authAdapters "github.com/delivertrack/auth/adapters"
-	authApp "github.com/delivertrack/auth/app"
-	authPorts "github.com/delivertrack/auth/ports"
+	authAdapters "github.com/keneke/delivertrack/pkg/auth/adapters"
+	authApp "github.com/keneke/delivertrack/pkg/auth/app"
+	authPorts "github.com/keneke/delivertrack/pkg/auth/ports"
 
 	"github.com/keneke/delivertrack/pkg/postgres"
 )

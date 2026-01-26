@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"github.com/delivertrack/auth/domain"
+	"github.com/keneke/delivertrack/pkg/auth/domain"
 )
 
 // AuthService defines the interface for authentication operations

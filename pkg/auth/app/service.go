@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/delivertrack/auth/domain"
-	"github.com/delivertrack/auth/ports"
+	"github.com/keneke/delivertrack/pkg/auth/domain"
+	"github.com/keneke/delivertrack/pkg/auth/ports"
 )
 
 // AuthService implements authentication use cases

@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/delivertrack/auth/domain"
-	"github.com/delivertrack/auth/ports"
+	"github.com/keneke/delivertrack/pkg/auth/domain"
+	"github.com/keneke/delivertrack/pkg/auth/ports"
 )
 
 // HTTPHandler handles HTTP requests for authentication operations

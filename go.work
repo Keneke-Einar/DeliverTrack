@@ -2,8 +2,8 @@ go 1.25.5
 
 use (
 	.
-	./cmd/delivery
-	./internal/auth
+	./internal/delivery
+	./pkg/auth
 	./pkg/mongodb
 	./pkg/postgres
 )

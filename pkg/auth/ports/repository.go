@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"github.com/delivertrack/auth/domain"
+	"github.com/keneke/delivertrack/pkg/auth/domain"
 )
 
 // UserRepository defines the interface for user data persistence

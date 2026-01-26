@@ -1,4 +1,4 @@
-module github.com/delivertrack/auth
+module github.com/keneke/delivertrack/pkg/auth
 
 go 1.25.5
 
