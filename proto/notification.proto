@@ -1,0 +1,202 @@
+syntax = "proto3";
+
+package delivertrack.notification;
+
+import "common.proto";
+
+option go_package = "github.com/keneke/delivertrack/proto/notification";
+
+service NotificationService {
+  // Send a notification
+  rpc SendNotification(SendNotificationRequest) returns (SendNotificationResponse);
+  
+  // Send bulk notifications
+  rpc SendBulkNotifications(SendBulkNotificationsRequest) returns (SendBulkNotificationsResponse);
+  
+  // Get notification history
+  rpc GetNotificationHistory(GetNotificationHistoryRequest) returns (GetNotificationHistoryResponse);
+  
+  // Update notification preferences
+  rpc UpdatePreferences(UpdatePreferencesRequest) returns (UpdatePreferencesResponse);
+  
+  // Get notification preferences
+  rpc GetPreferences(GetPreferencesRequest) returns (GetPreferencesResponse);
+  
+  // Subscribe to notifications
+  rpc Subscribe(SubscribeRequest) returns (stream Notification);
+  
+  // Mark notification as read
+  rpc MarkAsRead(MarkAsReadRequest) returns (MarkAsReadResponse);
+  
+  // Send delivery update notification
+  rpc SendDeliveryUpdate(SendDeliveryUpdateRequest) returns (SendDeliveryUpdateResponse);
+}
+
+message SendNotificationRequest {
+  string recipient_id = 1;
+  NotificationType type = 2;
+  NotificationChannel channel = 3;
+  string subject = 4;
+  string message = 5;
+  map<string, string> data = 6;
+  NotificationPriority priority = 7;
+  int64 schedule_at = 8; // Unix timestamp, 0 for immediate
+}
+
+message SendNotificationResponse {
+  string notification_id = 1;
+  NotificationStatus status = 2;
+  int64 sent_at = 3;
+}
+
+message SendBulkNotificationsRequest {
+  repeated SendNotificationRequest notifications = 1;
+}
+
+message SendBulkNotificationsResponse {
+  int32 success_count = 1;
+  int32 failed_count = 2;
+  repeated NotificationResult results = 3;
+}
+
+message NotificationResult {
+  string notification_id = 1;
+  bool success = 2;
+  string error_message = 3;
+}
+
+message GetNotificationHistoryRequest {
+  string recipient_id = 1;
+  NotificationType type = 2;
+  common.TimeRange time_range = 3;
+  common.Pagination pagination = 4;
+  bool unread_only = 5;
+}
+
+message GetNotificationHistoryResponse {
+  repeated Notification notifications = 1;
+  int32 total_count = 2;
+  int32 unread_count = 3;
+}
+
+message Notification {
+  string notification_id = 1;
+  string recipient_id = 2;
+  NotificationType type = 3;
+  NotificationChannel channel = 4;
+  string subject = 5;
+  string message = 6;
+  map<string, string> data = 7;
+  NotificationStatus status = 8;
+  NotificationPriority priority = 9;
+  bool read = 10;
+  int64 created_at = 11;
+  int64 sent_at = 12;
+  int64 read_at = 13;
+}
+
+message UpdatePreferencesRequest {
+  string user_id = 1;
+  NotificationPreferences preferences = 2;
+}
+
+message UpdatePreferencesResponse {
+  bool success = 1;
+  int64 updated_at = 2;
+}
+
+message GetPreferencesRequest {
+  string user_id = 1;
+}
+
+message GetPreferencesResponse {
+  NotificationPreferences preferences = 1;
+}
+
+message NotificationPreferences {
+  bool email_enabled = 1;
+  bool sms_enabled = 2;
+  bool push_enabled = 3;
+  bool in_app_enabled = 4;
+  map<string, bool> notification_types = 5; // notification type -> enabled
+  QuietHours quiet_hours = 6;
+}
+
+message QuietHours {
+  bool enabled = 1;
+  int32 start_hour = 2; // 0-23
+  int32 end_hour = 3; // 0-23
+  string timezone = 4;
+}
+
+message SubscribeRequest {
+  string user_id = 1;
+  repeated NotificationType types = 2;
+}
+
+message MarkAsReadRequest {
+  string notification_id = 1;
+  string user_id = 2;
+}
+
+message MarkAsReadResponse {
+  bool success = 1;
+  int64 read_at = 2;
+}
+
+message SendDeliveryUpdateRequest {
+  string delivery_id = 1;
+  string customer_id = 2;
+  string tracking_number = 3;
+  string status = 4;
+  string message = 5;
+  common.Location location = 6;
+  int64 estimated_delivery = 7;
+}
+
+message SendDeliveryUpdateResponse {
+  string notification_id = 1;
+  bool success = 2;
+  int64 sent_at = 3;
+}
+
+enum NotificationType {
+  NOTIFICATION_TYPE_UNSPECIFIED = 0;
+  NOTIFICATION_TYPE_DELIVERY_CREATED = 1;
+  NOTIFICATION_TYPE_DELIVERY_PICKED_UP = 2;
+  NOTIFICATION_TYPE_DELIVERY_IN_TRANSIT = 3;
+  NOTIFICATION_TYPE_DELIVERY_OUT_FOR_DELIVERY = 4;
+  NOTIFICATION_TYPE_DELIVERY_DELIVERED = 5;
+  NOTIFICATION_TYPE_DELIVERY_FAILED = 6;
+  NOTIFICATION_TYPE_DELIVERY_DELAYED = 7;
+  NOTIFICATION_TYPE_DELIVERY_CANCELLED = 8;
+  NOTIFICATION_TYPE_DRIVER_ASSIGNED = 9;
+  NOTIFICATION_TYPE_LOCATION_UPDATE = 10;
+  NOTIFICATION_TYPE_SYSTEM_ALERT = 11;
+}
+
+enum NotificationChannel {
+  CHANNEL_UNSPECIFIED = 0;
+  CHANNEL_EMAIL = 1;
+  CHANNEL_SMS = 2;
+  CHANNEL_PUSH = 3;
+  CHANNEL_IN_APP = 4;
+  CHANNEL_WEBHOOK = 5;
+}
+
+enum NotificationStatus {
+  NOTIFICATION_STATUS_UNSPECIFIED = 0;
+  NOTIFICATION_STATUS_PENDING = 1;
+  NOTIFICATION_STATUS_SENT = 2;
+  NOTIFICATION_STATUS_DELIVERED = 3;
+  NOTIFICATION_STATUS_FAILED = 4;
+  NOTIFICATION_STATUS_BOUNCED = 5;
+}
+
+enum NotificationPriority {
+  NOTIFICATION_PRIORITY_UNSPECIFIED = 0;
+  NOTIFICATION_PRIORITY_LOW = 1;
+  NOTIFICATION_PRIORITY_NORMAL = 2;
+  NOTIFICATION_PRIORITY_HIGH = 3;
+  NOTIFICATION_PRIORITY_URGENT = 4;
+}

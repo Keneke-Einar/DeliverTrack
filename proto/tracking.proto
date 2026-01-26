@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package delivertrack.tracking;
+
+import "common.proto";
+
+option go_package = "github.com/keneke/delivertrack/proto/tracking";
+
+service TrackingService {
+  // Create a new tracking entry for a package
+  rpc CreateTracking(CreateTrackingRequest) returns (CreateTrackingResponse);
+  
+  // Get tracking information for a package
+  rpc GetTracking(GetTrackingRequest) returns (GetTrackingResponse);
+  
+  // Update location of a package
+  rpc UpdateLocation(UpdateLocationRequest) returns (UpdateLocationResponse);
+  
+  // Add a tracking event
+  rpc AddTrackingEvent(AddTrackingEventRequest) returns (AddTrackingEventResponse);
+  
+  // Get tracking history
+  rpc GetTrackingHistory(GetTrackingHistoryRequest) returns (GetTrackingHistoryResponse);
+  
+  // Stream real-time location updates
+  rpc StreamLocation(StreamLocationRequest) returns (stream LocationUpdate);
+  
+  // Batch update locations
+  rpc BatchUpdateLocations(BatchUpdateLocationsRequest) returns (BatchUpdateLocationsResponse);
+}
+
+message CreateTrackingRequest {
+  string package_id = 1;
+  string tracking_number = 2;
+  common.Location origin = 3;
+  common.Location destination = 4;
+  int64 estimated_delivery = 5;
+}
+
+message CreateTrackingResponse {
+  string tracking_id = 1;
+  string tracking_number = 2;
+  int64 created_at = 3;
+}
+
+message GetTrackingRequest {
+  string tracking_number = 1;
+}
+
+message GetTrackingResponse {
+  TrackingInfo tracking = 1;
+}
+
+message TrackingInfo {
+  string tracking_id = 1;
+  string tracking_number = 2;
+  string package_id = 3;
+  common.Location current_location = 4;
+  common.Location origin = 5;
+  common.Location destination = 6;
+  TrackingStatus status = 7;
+  int64 estimated_delivery = 8;
+  int64 actual_delivery = 9;
+  repeated TrackingEvent events = 10;
+  int64 created_at = 11;
+  int64 updated_at = 12;
+}
+
+message UpdateLocationRequest {
+  string tracking_number = 1;
+  common.Location location = 2;
+  int64 timestamp = 3;
+}
+
+message UpdateLocationResponse {
+  bool success = 1;
+  int64 updated_at = 2;
+}
+
+message AddTrackingEventRequest {
+  string tracking_number = 1;
+  string event_type = 2;
+  string description = 3;
+  common.Location location = 4;
+  int64 timestamp = 5;
+  map<string, string> metadata = 6;
+}
+
+message AddTrackingEventResponse {
+  string event_id = 1;
+  int64 created_at = 2;
+}
+
+message TrackingEvent {
+  string event_id = 1;
+  string event_type = 2;
+  string description = 3;
+  common.Location location = 4;
+  int64 timestamp = 5;
+  map<string, string> metadata = 6;
+}
+
+message GetTrackingHistoryRequest {
+  string tracking_number = 1;
+  common.TimeRange time_range = 2;
+}
+
+message GetTrackingHistoryResponse {
+  repeated TrackingEvent events = 1;
+}
+
+message StreamLocationRequest {
+  string tracking_number = 1;
+}
+
+message LocationUpdate {
+  string tracking_number = 1;
+  common.Location location = 2;
+  int64 timestamp = 3;
+  double speed = 4; // km/h
+  double bearing = 5; // degrees
+}
+
+message BatchUpdateLocationsRequest {
+  repeated UpdateLocationRequest updates = 1;
+}
+
+message BatchUpdateLocationsResponse {
+  int32 success_count = 1;
+  int32 failed_count = 2;
+  repeated string failed_tracking_numbers = 3;
+}
+
+enum TrackingStatus {
+  TRACKING_STATUS_UNSPECIFIED = 0;
+  TRACKING_STATUS_CREATED = 1;
+  TRACKING_STATUS_PICKED_UP = 2;
+  TRACKING_STATUS_IN_TRANSIT = 3;
+  TRACKING_STATUS_OUT_FOR_DELIVERY = 4;
+  TRACKING_STATUS_DELIVERED = 5;
+  TRACKING_STATUS_FAILED = 6;
+  TRACKING_STATUS_RETURNED = 7;
+}

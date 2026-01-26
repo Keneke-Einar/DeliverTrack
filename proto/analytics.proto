@@ -1,0 +1,299 @@
+syntax = "proto3";
+
+package delivertrack.analytics;
+
+import "common.proto";
+
+option go_package = "github.com/keneke/delivertrack/proto/analytics";
+
+service AnalyticsService {
+  // Record a delivery event
+  rpc RecordEvent(RecordEventRequest) returns (RecordEventResponse);
+  
+  // Batch record events
+  rpc BatchRecordEvents(BatchRecordEventsRequest) returns (BatchRecordEventsResponse);
+  
+  // Get delivery metrics
+  rpc GetDeliveryMetrics(GetDeliveryMetricsRequest) returns (GetDeliveryMetricsResponse);
+  
+  // Get driver performance
+  rpc GetDriverPerformance(GetDriverPerformanceRequest) returns (GetDriverPerformanceResponse);
+  
+  // Get customer analytics
+  rpc GetCustomerAnalytics(GetCustomerAnalyticsRequest) returns (GetCustomerAnalyticsResponse);
+  
+  // Get system metrics
+  rpc GetSystemMetrics(GetSystemMetricsRequest) returns (GetSystemMetricsResponse);
+  
+  // Generate report
+  rpc GenerateReport(GenerateReportRequest) returns (GenerateReportResponse);
+  
+  // Get real-time dashboard
+  rpc GetDashboard(GetDashboardRequest) returns (GetDashboardResponse);
+  
+  // Get route efficiency
+  rpc GetRouteEfficiency(GetRouteEfficiencyRequest) returns (GetRouteEfficiencyResponse);
+}
+
+message RecordEventRequest {
+  string event_id = 1;
+  string event_type = 2;
+  string entity_type = 3; // delivery, driver, customer, etc.
+  string entity_id = 4;
+  map<string, string> properties = 5;
+  int64 timestamp = 6;
+}
+
+message RecordEventResponse {
+  bool success = 1;
+  int64 recorded_at = 2;
+}
+
+message BatchRecordEventsRequest {
+  repeated RecordEventRequest events = 1;
+}
+
+message BatchRecordEventsResponse {
+  int32 success_count = 1;
+  int32 failed_count = 2;
+}
+
+message GetDeliveryMetricsRequest {
+  common.TimeRange time_range = 1;
+  repeated string delivery_ids = 2;
+  string driver_id = 3;
+  AggregationLevel aggregation = 4;
+}
+
+message GetDeliveryMetricsResponse {
+  DeliveryMetrics metrics = 1;
+  repeated TimeSeriesPoint time_series = 2;
+}
+
+message DeliveryMetrics {
+  int32 total_deliveries = 1;
+  int32 successful_deliveries = 2;
+  int32 failed_deliveries = 3;
+  int32 cancelled_deliveries = 4;
+  double success_rate = 5; // percentage
+  double average_delivery_time = 6; // minutes
+  double average_distance = 7; // km
+  int32 on_time_deliveries = 8;
+  double on_time_rate = 9; // percentage
+  double average_rating = 10;
+  int32 total_rating_count = 11;
+}
+
+message GetDriverPerformanceRequest {
+  string driver_id = 1;
+  common.TimeRange time_range = 2;
+}
+
+message GetDriverPerformanceResponse {
+  DriverPerformance performance = 1;
+}
+
+message DriverPerformance {
+  string driver_id = 1;
+  int32 total_deliveries = 2;
+  int32 completed_deliveries = 3;
+  int32 failed_deliveries = 4;
+  double completion_rate = 5; // percentage
+  double average_delivery_time = 6; // minutes
+  double total_distance = 7; // km
+  double average_rating = 8;
+  int32 rating_count = 9;
+  int32 on_time_deliveries = 10;
+  double on_time_rate = 11; // percentage
+  double efficiency_score = 12; // 0-100
+  int64 total_working_hours = 13; // seconds
+  double deliveries_per_hour = 14;
+}
+
+message GetCustomerAnalyticsRequest {
+  string customer_id = 1;
+  common.TimeRange time_range = 2;
+}
+
+message GetCustomerAnalyticsResponse {
+  CustomerAnalytics analytics = 1;
+}
+
+message CustomerAnalytics {
+  string customer_id = 1;
+  int32 total_deliveries = 2;
+  int32 successful_deliveries = 3;
+  int32 failed_deliveries = 4;
+  double average_delivery_time = 5; // minutes
+  repeated common.Location frequent_locations = 6;
+  map<string, int32> delivery_time_preferences = 7; // time slot -> count
+  double total_spent = 8;
+  int64 customer_since = 9;
+  double satisfaction_score = 10;
+}
+
+message GetSystemMetricsRequest {
+  common.TimeRange time_range = 1;
+}
+
+message GetSystemMetricsResponse {
+  SystemMetrics metrics = 1;
+}
+
+message SystemMetrics {
+  int32 active_drivers = 1;
+  int32 active_deliveries = 2;
+  int32 pending_deliveries = 3;
+  double average_response_time = 4; // ms
+  double system_uptime = 5; // percentage
+  int64 total_requests = 6;
+  int64 failed_requests = 7;
+  double error_rate = 8; // percentage
+  map<string, int64> api_call_counts = 9;
+  ResourceUsage resource_usage = 10;
+}
+
+message ResourceUsage {
+  double cpu_usage = 1; // percentage
+  double memory_usage = 2; // percentage
+  double disk_usage = 3; // percentage
+  int64 network_in = 4; // bytes
+  int64 network_out = 5; // bytes
+}
+
+message GenerateReportRequest {
+  ReportType type = 1;
+  common.TimeRange time_range = 2;
+  string entity_id = 3; // driver_id, customer_id, etc.
+  ReportFormat format = 4;
+  map<string, string> filters = 5;
+}
+
+message GenerateReportResponse {
+  string report_id = 1;
+  string download_url = 2;
+  int64 generated_at = 3;
+  int64 expires_at = 4;
+}
+
+message GetDashboardRequest {
+  DashboardType type = 1;
+  string entity_id = 2; // optional, for driver/customer specific dashboards
+}
+
+message GetDashboardResponse {
+  Dashboard dashboard = 1;
+}
+
+message Dashboard {
+  string title = 1;
+  int64 last_updated = 2;
+  DeliveryMetrics delivery_summary = 3;
+  repeated KPI kpis = 4;
+  repeated Chart charts = 5;
+  repeated Alert alerts = 6;
+}
+
+message KPI {
+  string name = 1;
+  double value = 2;
+  string unit = 3;
+  double change_percentage = 4; // compared to previous period
+  Trend trend = 5;
+}
+
+message Chart {
+  string title = 1;
+  ChartType type = 2;
+  repeated TimeSeriesPoint data = 3;
+}
+
+message TimeSeriesPoint {
+  int64 timestamp = 1;
+  double value = 2;
+  map<string, double> metrics = 3;
+}
+
+message Alert {
+  string id = 1;
+  AlertSeverity severity = 2;
+  string message = 3;
+  int64 created_at = 4;
+  bool acknowledged = 5;
+}
+
+message GetRouteEfficiencyRequest {
+  string driver_id = 1;
+  common.TimeRange time_range = 2;
+}
+
+message GetRouteEfficiencyResponse {
+  RouteEfficiency efficiency = 1;
+}
+
+message RouteEfficiency {
+  double total_distance = 1; // km
+  double optimal_distance = 2; // km
+  double efficiency_score = 3; // 0-100
+  double average_speed = 4; // km/h
+  int32 total_stops = 5;
+  double idle_time = 6; // minutes
+  double driving_time = 7; // minutes
+  double fuel_efficiency = 8; // km/l
+}
+
+enum AggregationLevel {
+  AGGREGATION_LEVEL_UNSPECIFIED = 0;
+  AGGREGATION_LEVEL_HOURLY = 1;
+  AGGREGATION_LEVEL_DAILY = 2;
+  AGGREGATION_LEVEL_WEEKLY = 3;
+  AGGREGATION_LEVEL_MONTHLY = 4;
+}
+
+enum ReportType {
+  REPORT_TYPE_UNSPECIFIED = 0;
+  REPORT_TYPE_DELIVERY_SUMMARY = 1;
+  REPORT_TYPE_DRIVER_PERFORMANCE = 2;
+  REPORT_TYPE_CUSTOMER_ANALYTICS = 3;
+  REPORT_TYPE_FINANCIAL = 4;
+  REPORT_TYPE_OPERATIONAL = 5;
+}
+
+enum ReportFormat {
+  REPORT_FORMAT_UNSPECIFIED = 0;
+  REPORT_FORMAT_PDF = 1;
+  REPORT_FORMAT_CSV = 2;
+  REPORT_FORMAT_EXCEL = 3;
+  REPORT_FORMAT_JSON = 4;
+}
+
+enum DashboardType {
+  DASHBOARD_TYPE_UNSPECIFIED = 0;
+  DASHBOARD_TYPE_OPERATIONS = 1;
+  DASHBOARD_TYPE_DRIVER = 2;
+  DASHBOARD_TYPE_CUSTOMER = 3;
+  DASHBOARD_TYPE_EXECUTIVE = 4;
+}
+
+enum ChartType {
+  CHART_TYPE_UNSPECIFIED = 0;
+  CHART_TYPE_LINE = 1;
+  CHART_TYPE_BAR = 2;
+  CHART_TYPE_PIE = 3;
+  CHART_TYPE_AREA = 4;
+}
+
+enum Trend {
+  TREND_UNSPECIFIED = 0;
+  TREND_UP = 1;
+  TREND_DOWN = 2;
+  TREND_STABLE = 3;
+}
+
+enum AlertSeverity {
+  ALERT_SEVERITY_UNSPECIFIED = 0;
+  ALERT_SEVERITY_INFO = 1;
+  ALERT_SEVERITY_WARNING = 2;
+  ALERT_SEVERITY_ERROR = 3;
+  ALERT_SEVERITY_CRITICAL = 4;
+}

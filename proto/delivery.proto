@@ -1,0 +1,211 @@
+syntax = "proto3";
+
+package delivertrack.delivery;
+
+import "common.proto";
+
+option go_package = "github.com/keneke/delivertrack/proto/delivery";
+
+service DeliveryService {
+  // Create a new delivery
+  rpc CreateDelivery(CreateDeliveryRequest) returns (CreateDeliveryResponse);
+  
+  // Get delivery details
+  rpc GetDelivery(GetDeliveryRequest) returns (GetDeliveryResponse);
+  
+  // Update delivery status
+  rpc UpdateDeliveryStatus(UpdateDeliveryStatusRequest) returns (UpdateDeliveryStatusResponse);
+  
+  // Assign driver to delivery
+  rpc AssignDriver(AssignDriverRequest) returns (AssignDriverResponse);
+  
+  // List deliveries
+  rpc ListDeliveries(ListDeliveriesRequest) returns (ListDeliveriesResponse);
+  
+  // Cancel delivery
+  rpc CancelDelivery(CancelDeliveryRequest) returns (CancelDeliveryResponse);
+  
+  // Get driver deliveries
+  rpc GetDriverDeliveries(GetDriverDeliveriesRequest) returns (GetDriverDeliveriesResponse);
+  
+  // Optimize delivery route
+  rpc OptimizeRoute(OptimizeRouteRequest) returns (OptimizeRouteResponse);
+  
+  // Confirm delivery
+  rpc ConfirmDelivery(ConfirmDeliveryRequest) returns (ConfirmDeliveryResponse);
+}
+
+message CreateDeliveryRequest {
+  string package_id = 1;
+  string customer_id = 2;
+  common.Location pickup_location = 3;
+  common.Location delivery_location = 4;
+  int64 scheduled_pickup = 5;
+  int64 scheduled_delivery = 6;
+  DeliveryPriority priority = 7;
+  PackageDetails package_details = 8;
+  string special_instructions = 9;
+}
+
+message CreateDeliveryResponse {
+  string delivery_id = 1;
+  string tracking_number = 2;
+  int64 created_at = 3;
+}
+
+message GetDeliveryRequest {
+  string delivery_id = 1;
+}
+
+message GetDeliveryResponse {
+  Delivery delivery = 1;
+}
+
+message Delivery {
+  string delivery_id = 1;
+  string package_id = 2;
+  string customer_id = 3;
+  string driver_id = 4;
+  string tracking_number = 5;
+  common.Location pickup_location = 6;
+  common.Location delivery_location = 7;
+  DeliveryStatus status = 8;
+  int64 scheduled_pickup = 9;
+  int64 scheduled_delivery = 10;
+  int64 actual_pickup = 11;
+  int64 actual_delivery = 12;
+  DeliveryPriority priority = 13;
+  PackageDetails package_details = 14;
+  string special_instructions = 15;
+  string signature_url = 16;
+  repeated string photo_urls = 17;
+  int64 created_at = 18;
+  int64 updated_at = 19;
+}
+
+message UpdateDeliveryStatusRequest {
+  string delivery_id = 1;
+  DeliveryStatus status = 2;
+  string notes = 3;
+  common.Location location = 4;
+}
+
+message UpdateDeliveryStatusResponse {
+  bool success = 1;
+  int64 updated_at = 2;
+}
+
+message AssignDriverRequest {
+  string delivery_id = 1;
+  string driver_id = 2;
+}
+
+message AssignDriverResponse {
+  bool success = 1;
+  int64 assigned_at = 2;
+}
+
+message ListDeliveriesRequest {
+  DeliveryStatus status = 1;
+  string driver_id = 2;
+  string customer_id = 3;
+  common.TimeRange time_range = 4;
+  common.Pagination pagination = 5;
+}
+
+message ListDeliveriesResponse {
+  repeated Delivery deliveries = 1;
+  int32 total_count = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message CancelDeliveryRequest {
+  string delivery_id = 1;
+  string reason = 2;
+}
+
+message CancelDeliveryResponse {
+  bool success = 1;
+  int64 cancelled_at = 2;
+}
+
+message GetDriverDeliveriesRequest {
+  string driver_id = 1;
+  DeliveryStatus status = 2;
+  int64 date = 3;
+}
+
+message GetDriverDeliveriesResponse {
+  repeated Delivery deliveries = 1;
+  int32 total_count = 2;
+}
+
+message OptimizeRouteRequest {
+  string driver_id = 1;
+  repeated string delivery_ids = 2;
+  common.Location start_location = 3;
+}
+
+message OptimizeRouteResponse {
+  repeated RouteStop route = 1;
+  double total_distance = 2; // km
+  int64 estimated_duration = 3; // seconds
+}
+
+message RouteStop {
+  string delivery_id = 1;
+  int32 sequence = 2;
+  common.Location location = 3;
+  int64 estimated_arrival = 4;
+  double distance_from_previous = 5; // km
+}
+
+message ConfirmDeliveryRequest {
+  string delivery_id = 1;
+  string signature_data = 2; // base64 encoded signature
+  repeated string photo_data = 3; // base64 encoded photos
+  string recipient_name = 4;
+  common.Location delivery_location = 5;
+  int64 delivery_time = 6;
+  string notes = 7;
+}
+
+message ConfirmDeliveryResponse {
+  bool success = 1;
+  string signature_url = 2;
+  repeated string photo_urls = 3;
+  int64 confirmed_at = 4;
+}
+
+message PackageDetails {
+  double weight = 1; // kg
+  double length = 2; // cm
+  double width = 3; // cm
+  double height = 4; // cm
+  string description = 5;
+  bool fragile = 6;
+  bool requires_signature = 7;
+  double declared_value = 8;
+}
+
+enum DeliveryStatus {
+  DELIVERY_STATUS_UNSPECIFIED = 0;
+  DELIVERY_STATUS_PENDING = 1;
+  DELIVERY_STATUS_ASSIGNED = 2;
+  DELIVERY_STATUS_PICKED_UP = 3;
+  DELIVERY_STATUS_IN_TRANSIT = 4;
+  DELIVERY_STATUS_OUT_FOR_DELIVERY = 5;
+  DELIVERY_STATUS_DELIVERED = 6;
+  DELIVERY_STATUS_FAILED = 7;
+  DELIVERY_STATUS_CANCELLED = 8;
+  DELIVERY_STATUS_RETURNED = 9;
+}
+
+enum DeliveryPriority {
+  PRIORITY_UNSPECIFIED = 0;
+  PRIORITY_STANDARD = 1;
+  PRIORITY_EXPRESS = 2;
+  PRIORITY_SAME_DAY = 3;
+  PRIORITY_URGENT = 4;
+}

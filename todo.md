@@ -31,16 +31,39 @@
 
 ### Delivery Service
 - [ ] Implement delivery service:
-  - [ ] `POST /deliveries` (create new delivery)
-  - [ ] `GET /deliveries/:id` (track status)
-  - [ ] `PUT /deliveries/:id/status` (update status)
-  - [ ] `GET /deliveries?status=active` (filtering)
+  - [ ] `POST /deliveries` (create new delivery - REST API)
+  - [ ] `GET /deliveries/:id` (track status - REST API)
+  - [ ] `PUT /deliveries/:id/status` (update status - REST API)
+  - [ ] `GET /deliveries?status=active` (filtering - REST API)
 
 ### Tracking Service
 - [ ] Create tracking service:
-  - [ ] `POST /locations` (courier location updates)
+  - [ ] `POST /locations` (courier location updates - REST API)
   - [ ] WebSocket endpoint for live tracking
   - [ ] ETA calculation using distance matrices
+
+### gRPC Setup for Inter-Service Communication
+- [x] Define proto files:
+  - [x] `delivery.proto` (DeliveryService RPC methods)
+  - [x] `tracking.proto` (TrackingService RPC methods)
+  - [x] `notification.proto` (NotificationService RPC methods)
+  - [x] `analytics.proto` (AnalyticsService RPC methods)
+- [ ] Generate gRPC code for all services
+- [ ] Implement gRPC servers:
+  - [ ] Delivery service gRPC server (port 50051)
+  - [ ] Tracking service gRPC server (port 50052)
+  - [ ] Notification service gRPC server (port 50053)
+  - [ ] Analytics service gRPC server (port 50054)
+- [ ] Implement gRPC clients for inter-service calls:
+  - [ ] Delivery → Notification (send status updates)
+  - [ ] Delivery → Analytics (record delivery events)
+  - [ ] Tracking → Delivery (update location & ETA)
+  - [ ] Tracking → Notification (real-time updates)
+- [ ] Add gRPC interceptors:
+  - [ ] Authentication/authorization interceptor
+  - [ ] Logging interceptor with correlation IDs
+  - [ ] Error handling interceptor
+- [ ] Implement health checks for gRPC services
 
 ### Database Optimizations
 - [ ] Add PostgreSQL optimizations:
@@ -109,8 +132,9 @@
 ## Day 9-10: DevOps, Monitoring & Analytics
 
 ### Docker
-- [ ] Dockerize all services with health checks
+- [ ] Dockerize all services with health checks (REST + gRPC ports)
 - [ ] Create `docker-compose.yml` with all dependencies
+- [ ] Configure service mesh networking for gRPC communication
 
 ### Logging
 - [ ] Add structured logging (Zap + correlation IDs)
@@ -121,7 +145,9 @@
   - [ ] Average delivery time
   - [ ] WebSocket connections
   - [ ] Location update frequency
-  - [ ] API response times
+  - [ ] REST API response times
+  - [ ] gRPC call latency and success rates
+  - [ ] Inter-service communication metrics
 
 ### Grafana
 - [ ] Create Grafana dashboard for operations
@@ -139,5 +165,8 @@
 
 - [ ] Add Circuit Breaker for external mapping APIs
 - [ ] Implement A/B testing for routing algorithms
-- [ ] Add load testing scenarios
+- [ ] Add load testing scenarios (REST + gRPC)
 - [ ] Create admin dashboard with real-time map
+- [ ] Implement gRPC streaming for real-time location updates
+- [ ] Add service discovery (Consul/etcd) for dynamic gRPC endpoints
+- [ ] Implement gRPC load balancing strategies
