@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/keneke/delivertrack/internal/notification/domain"
-	"github.com/keneke/delivertrack/internal/notification/ports"
+	"github.com/Keneke-Einar/delivertrack/internal/notification/domain"
+	"github.com/Keneke-Einar/delivertrack/internal/notification/ports"
 )
 
 // NotificationService implements notification use cases

@@ -9,14 +9,14 @@ import (
 	"strings"
 	"time"
 
-	deliveryAdapters "github.com/keneke/delivertrack/internal/delivery/adapters"
-	deliveryApp "github.com/keneke/delivertrack/internal/delivery/app"
+	deliveryAdapters "github.com/Keneke-Einar/delivertrack/internal/delivery/adapters"
+	deliveryApp "github.com/Keneke-Einar/delivertrack/internal/delivery/app"
 
-	authAdapters "github.com/keneke/delivertrack/pkg/auth/adapters"
-	authApp "github.com/keneke/delivertrack/pkg/auth/app"
-	authPorts "github.com/keneke/delivertrack/pkg/auth/ports"
+	authAdapters "github.com/Keneke-Einar/delivertrack/pkg/auth/adapters"
+	authApp "github.com/Keneke-Einar/delivertrack/pkg/auth/app"
+	authPorts "github.com/Keneke-Einar/delivertrack/pkg/auth/ports"
 
-	"github.com/keneke/delivertrack/pkg/postgres"
+	"github.com/Keneke-Einar/delivertrack/pkg/postgres"
 )
 
 var version = "dev"

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/keneke/delivertrack/internal/analytics/domain"
-	"github.com/keneke/delivertrack/internal/analytics/ports"
+	"github.com/Keneke-Einar/delivertrack/internal/analytics/domain"
+	"github.com/Keneke-Einar/delivertrack/internal/analytics/ports"
 )
 
 // AnalyticsService implements analytics use cases

@@ -4,7 +4,7 @@ package delivertrack.analytics;
 
 import "common.proto";
 
-option go_package = "github.com/keneke/delivertrack/proto/analytics";
+option go_package = "github.com/Keneke-Einar/delivertrack/proto/analytics";
 
 service AnalyticsService {
   // Record a delivery event

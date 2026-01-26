@@ -4,7 +4,7 @@ package delivertrack.delivery;
 
 import "common.proto";
 
-option go_package = "github.com/keneke/delivertrack/proto/delivery";
+option go_package = "github.com/Keneke-Einar/delivertrack/proto/delivery";
 
 service DeliveryService {
   // Create a new delivery

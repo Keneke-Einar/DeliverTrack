@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"github.com/keneke/delivertrack/internal/delivery/domain"
+	"github.com/Keneke-Einar/delivertrack/internal/delivery/domain"
 )
 
 // DeliveryService defines the interface for delivery business operations

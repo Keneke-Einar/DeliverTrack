@@ -4,7 +4,7 @@ package delivertrack.notification;
 
 import "common.proto";
 
-option go_package = "github.com/keneke/delivertrack/proto/notification";
+option go_package = "github.com/Keneke-Einar/delivertrack/proto/notification";
 
 service NotificationService {
   // Send a notification

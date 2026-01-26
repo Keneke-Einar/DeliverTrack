@@ -4,7 +4,7 @@ package delivertrack.tracking;
 
 import "common.proto";
 
-option go_package = "github.com/keneke/delivertrack/proto/tracking";
+option go_package = "github.com/Keneke-Einar/delivertrack/proto/tracking";
 
 service TrackingService {
   // Create a new tracking entry for a package

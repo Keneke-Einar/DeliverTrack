@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"github.com/keneke/delivertrack/internal/tracking/domain"
+	"github.com/Keneke-Einar/delivertrack/internal/tracking/domain"
 )
 
 // TrackingService defines the interface for tracking business operations

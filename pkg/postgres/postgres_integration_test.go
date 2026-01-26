@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/keneke/delivertrack/pkg/postgres"
+	"github.com/Keneke-Einar/delivertrack/pkg/postgres"
 )
 
 // Integration tests that require a real PostgreSQL database

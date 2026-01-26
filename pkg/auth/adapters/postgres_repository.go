@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/keneke/delivertrack/pkg/auth/domain"
+	"github.com/Keneke-Einar/delivertrack/pkg/auth/domain"
 )
 
 // PostgresUserRepository implements the UserRepository interface using PostgreSQL

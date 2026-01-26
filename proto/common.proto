@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package delivertrack.common;
 
-option go_package = "github.com/keneke/delivertrack/proto/common";
+option go_package = "github.com/Keneke-Einar/delivertrack/proto/common";
 
 // Common types shared across services
 

@@ -126,7 +126,7 @@ make mongo-test
 
 ### Use in Go Code:
 ```go
-import "github.com/keneke/delivertrack/pkg/mongodb"
+import "github.com/Keneke-Einar/delivertrack/pkg/mongodb"
 
 // Connect
 mongo, err := mongodb.New(os.Getenv("MONGODB_URL"))

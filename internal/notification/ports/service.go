@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"github.com/keneke/delivertrack/internal/notification/domain"
+	"github.com/Keneke-Einar/delivertrack/internal/notification/domain"
 )
 
 // NotificationService defines the notification use cases

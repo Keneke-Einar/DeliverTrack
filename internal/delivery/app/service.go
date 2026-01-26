@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/keneke/delivertrack/internal/delivery/domain"
-	"github.com/keneke/delivertrack/internal/delivery/ports"
+	"github.com/Keneke-Einar/delivertrack/internal/delivery/domain"
+	"github.com/Keneke-Einar/delivertrack/internal/delivery/ports"
 )
 
 // DeliveryService implements the delivery use cases

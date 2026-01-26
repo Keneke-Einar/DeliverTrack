@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/keneke/delivertrack/pkg/postgres"
+	"github.com/Keneke-Einar/delivertrack/pkg/postgres"
 )
 
 // TestNew_Success tests successful connection to PostgreSQL

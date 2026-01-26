@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"github.com/keneke/delivertrack/internal/analytics/domain"
+	"github.com/Keneke-Einar/delivertrack/internal/analytics/domain"
 )
 
 // MetricRepository defines the analytics metric persistence operations

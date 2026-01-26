@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/keneke/delivertrack/pkg/auth/domain"
+	"github.com/Keneke-Einar/delivertrack/pkg/auth/domain"
 	"github.com/golang-jwt/jwt/v5"
 )
 

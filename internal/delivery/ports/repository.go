@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"github.com/keneke/delivertrack/internal/delivery/domain"
+	"github.com/Keneke-Einar/delivertrack/internal/delivery/domain"
 )
 
 // DeliveryRepository defines the interface for delivery data persistence

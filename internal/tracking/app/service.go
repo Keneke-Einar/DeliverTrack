@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/keneke/delivertrack/internal/tracking/domain"
-	"github.com/keneke/delivertrack/internal/tracking/ports"
+	"github.com/Keneke-Einar/delivertrack/internal/tracking/domain"
+	"github.com/Keneke-Einar/delivertrack/internal/tracking/ports"
 )
 
 // TrackingService implements tracking use cases

@@ -3,7 +3,7 @@ package auth_test
 import (
 	"testing"
 
-	"github.com/keneke/delivertrack/pkg/auth/domain"
+	"github.com/Keneke-Einar/delivertrack/pkg/auth/domain"
 )
 
 func TestPasswordValidation(t *testing.T) {

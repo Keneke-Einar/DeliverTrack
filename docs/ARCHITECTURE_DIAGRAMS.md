@@ -270,7 +270,7 @@ cmd/delivery/main.go
     imports
     ↓
 ┌───────────────────────────────────────────────────────────┐
-│  github.com/keneke/delivertrack/internal/delivery/        │
+│  github.com/Keneke-Einar/delivertrack/internal/delivery/        │
 │                                                           │
 │  adapters/                                                │
 │      ↓ imports                                            │
