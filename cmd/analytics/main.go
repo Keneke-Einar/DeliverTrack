@@ -4,13 +4,19 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
+
+	"github.com/Keneke-Einar/delivertrack/pkg/config"
 )
 
 var version = "dev"
 
 func main() {
-	port := getEnv("SERVICE_PORT", "8083")
+	cfg, err := config.Load("analytics")
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	port := cfg.Service.Port
 
 	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/", rootHandler)
@@ -31,11 +37,4 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, `{"service":"analytics","version":"%s"}`, version)
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }

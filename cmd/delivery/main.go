@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strings"
-	"time"
 
 	deliveryAdapters "github.com/Keneke-Einar/delivertrack/internal/delivery/adapters"
 	deliveryApp "github.com/Keneke-Einar/delivertrack/internal/delivery/app"
@@ -16,15 +14,21 @@ import (
 	authApp "github.com/Keneke-Einar/delivertrack/pkg/auth/app"
 	authPorts "github.com/Keneke-Einar/delivertrack/pkg/auth/ports"
 
+	"github.com/Keneke-Einar/delivertrack/pkg/config"
 	"github.com/Keneke-Einar/delivertrack/pkg/postgres"
 )
 
 var version = "dev"
 
 func main() {
-	port := getEnv("SERVICE_PORT", "8080")
-	databaseURL := getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/delivertrack?sslmode=disable")
-	jwtSecret := getEnv("JWT_SECRET", "your-secret-key-change-in-production")
+	cfg, err := config.Load("delivery")
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	port := cfg.Service.Port
+	databaseURL := cfg.Database.URL
+	jwtSecret := cfg.Auth.JWTSecret
 
 	// Initialize database
 	db, err := postgres.New(databaseURL)
@@ -39,9 +43,9 @@ func main() {
 
 	// Auth layer
 	userRepo := authAdapters.NewPostgresUserRepository(db.DB)
-	tokenService := authAdapters.NewJWTTokenService(jwtSecret, 24*time.Hour)
+	tokenService := authAdapters.NewJWTTokenService(jwtSecret, cfg.Auth.JWTExpiration)
 	authService := authApp.NewAuthService(userRepo, tokenService)
-	authHandler := authAdapters.NewHTTPHandler(authService, 24*time.Hour)
+	authHandler := authAdapters.NewHTTPHandler(authService, cfg.Auth.JWTExpiration)
 
 	// Delivery layer
 	deliveryRepo := deliveryAdapters.NewPostgresDeliveryRepository(db.DB)
@@ -153,11 +157,4 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
-}
-
-func getEnv(key, fallback string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return fallback
 }

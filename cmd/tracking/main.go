@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strings"
-	"time"
 
 	trackingAdapters "github.com/Keneke-Einar/delivertrack/internal/tracking/adapters"
 	trackingApp "github.com/Keneke-Einar/delivertrack/internal/tracking/app"
@@ -16,6 +14,7 @@ import (
 	authApp "github.com/Keneke-Einar/delivertrack/pkg/auth/app"
 	authPorts "github.com/Keneke-Einar/delivertrack/pkg/auth/ports"
 
+	"github.com/Keneke-Einar/delivertrack/pkg/config"
 	"github.com/Keneke-Einar/delivertrack/pkg/mongodb"
 	"github.com/Keneke-Einar/delivertrack/pkg/postgres"
 	"github.com/Keneke-Einar/delivertrack/pkg/websocket"
@@ -24,10 +23,15 @@ import (
 var version = "dev"
 
 func main() {
-	port := getEnv("SERVICE_PORT", "8081")
-	databaseURL := getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/delivertrack?sslmode=disable")
-	mongoURL := getEnv("MONGO_URL", "mongodb://localhost:27017")
-	jwtSecret := getEnv("JWT_SECRET", "your-secret-key-change-in-production")
+	cfg, err := config.Load("tracking")
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	port := cfg.Service.Port
+	databaseURL := cfg.Database.URL
+	mongoURL := cfg.MongoDB.URL
+	jwtSecret := cfg.Auth.JWTSecret
 
 	// Initialize PostgreSQL for auth
 	db, err := postgres.New(databaseURL)
@@ -51,9 +55,9 @@ func main() {
 
 	// Auth layer
 	userRepo := authAdapters.NewPostgresUserRepository(db.DB)
-	tokenService := authAdapters.NewJWTTokenService(jwtSecret, 24*time.Hour)
+	tokenService := authAdapters.NewJWTTokenService(jwtSecret, cfg.Auth.JWTExpiration)
 	authService := authApp.NewAuthService(userRepo, tokenService)
-	authHandler := authAdapters.NewHTTPHandler(authService, 24*time.Hour)
+	authHandler := authAdapters.NewHTTPHandler(authService, cfg.Auth.JWTExpiration)
 
 	// Tracking layer
 	trackingRepo := trackingAdapters.NewMongoDBLocationRepository(mongoClient)
@@ -195,11 +199,4 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
-}
-
-func getEnv(key, fallback string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return fallback
 }

@@ -6,8 +6,8 @@
 - [x] Initialize Go modules for 4 services
 - [x] Create Makefile with common commands (build, test, run, migrate)
 - [x] Set up project structure and directories
-- [ ] Add environment configuration management
-- [ ] Add secrets management (vault or similar)
+- [x] Add environment configuration management
+- [x] Add secrets management (vault or similar)
 
 ### API Gateway
 - [ ] Implement API Gateway:
