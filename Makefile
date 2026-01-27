@@ -1,7 +1,7 @@
 .PHONY: run test migrate test-integration test-coverage build build-all lint clean docker-build docker-push
 
 # Variables
-SERVICES := delivery tracking notification analytics
+SERVICES := delivery tracking notification analytics gateway
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 REGISTRY ?= ghcr.io
 IMAGE_PREFIX ?= $(shell basename $(CURDIR))

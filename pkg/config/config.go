@@ -124,7 +124,21 @@ func Load(serviceName string) (*Config, error) {
 
 // setDefaults sets default values for configuration
 func setDefaults(serviceName string) {
-	viper.SetDefault("service.port", "8080")
+	port := "8080"
+	switch serviceName {
+	case "delivery":
+		port = "8080"
+	case "tracking":
+		port = "8081"
+	case "notification":
+		port = "8082"
+	case "analytics":
+		port = "8083"
+	case "gateway":
+		port = "8084"
+	}
+
+	viper.SetDefault("service.port", port)
 	viper.SetDefault("service.version", "dev")
 	viper.SetDefault("database.url", "postgres://postgres:postgres@localhost:5432/delivertrack?sslmode=disable")
 	viper.SetDefault("mongodb.url", "mongodb://admin:admin123@localhost:27017/delivertrack?authSource=admin")

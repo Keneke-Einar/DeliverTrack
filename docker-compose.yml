@@ -101,6 +101,39 @@ services:
     networks:
       - delivertrack
 
+  # API Gateway
+  gateway:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.gateway
+    ports:
+      - "8084:8084"
+    environment:
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=root
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
+      delivery:
+        condition: service_started
+      tracking:
+        condition: service_started
+      notification:
+        condition: service_started
+      analytics:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - delivertrack
+
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
