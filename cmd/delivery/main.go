@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 
@@ -16,6 +17,10 @@ import (
 
 	"github.com/Keneke-Einar/delivertrack/pkg/config"
 	"github.com/Keneke-Einar/delivertrack/pkg/postgres"
+
+	"github.com/Keneke-Einar/delivertrack/proto/delivery"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 var version = "dev"
@@ -50,9 +55,10 @@ func main() {
 	// Delivery layer
 	deliveryRepo := deliveryAdapters.NewPostgresDeliveryRepository(db.DB)
 	deliveryService := deliveryApp.NewDeliveryService(deliveryRepo)
-	deliveryHandler := deliveryAdapters.NewHTTPHandler(deliveryService)
+	deliveryHTTPHandler := deliveryAdapters.NewHTTPHandler(deliveryService)
+	deliveryGRPCHandler := deliveryAdapters.NewGRPCHandler(deliveryService)
 
-	// Setup router with middleware
+	// Setup HTTP router with middleware
 	mux := http.NewServeMux()
 
 	// Public routes
@@ -62,34 +68,54 @@ func main() {
 	mux.HandleFunc("/register", authHandler.Register)
 
 	// Protected routes - delivery endpoints
-	mux.HandleFunc("/deliveries", authMiddleware(authService, deliveryHandler.ListDeliveries))
+	mux.HandleFunc("/deliveries", authMiddleware(authService, deliveryHTTPHandler.ListDeliveries))
 	mux.HandleFunc("/deliveries/", func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/deliveries/")
 		if path == "" {
 			// Handle POST /deliveries
-			authMiddleware(authService, deliveryHandler.CreateDelivery)(w, r)
+			authMiddleware(authService, deliveryHTTPHandler.CreateDelivery)(w, r)
 			return
 		}
 
 		// Check if path ends with /status
 		if strings.HasSuffix(path, "/status") {
 			// Handle PUT /deliveries/:id/status
-			authMiddleware(authService, deliveryHandler.UpdateDeliveryStatus)(w, r)
+			authMiddleware(authService, deliveryHTTPHandler.UpdateDeliveryStatus)(w, r)
 		} else {
 			// Handle GET /deliveries/:id
-			authMiddleware(authService, deliveryHandler.GetDelivery)(w, r)
+			authMiddleware(authService, deliveryHTTPHandler.GetDelivery)(w, r)
 		}
 	})
 
 	// Wrap with CORS middleware
-	handler := corsMiddleware(mux)
+	httpHandler := corsMiddleware(mux)
 
-	log.Printf("Delivery service v%s starting on port %s", version, port)
-	log.Printf("Endpoints: POST /login, POST /register")
-	log.Printf("           POST /deliveries, GET /deliveries/:id, PUT /deliveries/:id/status, GET /deliveries?status=xxx")
+	// Start HTTP server in a goroutine
+	go func() {
+		log.Printf("Delivery HTTP service v%s starting on port %s", version, port)
+		log.Printf("Endpoints: POST /login, POST /register")
+		log.Printf("           POST /deliveries, GET /deliveries/:id, PUT /deliveries/:id/status, GET /deliveries?status=xxx")
 
-	if err := http.ListenAndServe(":"+port, handler); err != nil {
-		log.Fatal(err)
+		if err := http.ListenAndServe(":"+port, httpHandler); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	// Start gRPC server
+	grpcPort := "50051"
+	lis, err := net.Listen("tcp", ":"+grpcPort)
+	if err != nil {
+		log.Fatalf("Failed to listen on gRPC port %s: %v", grpcPort, err)
+	}
+
+	grpcServer := grpc.NewServer()
+	delivery.RegisterDeliveryServiceServer(grpcServer, deliveryGRPCHandler)
+	reflection.Register(grpcServer) // Enable reflection for debugging
+
+	log.Printf("Delivery gRPC service v%s starting on port %s", version, grpcPort)
+
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Fatalf("Failed to serve gRPC: %v", err)
 	}
 }
 

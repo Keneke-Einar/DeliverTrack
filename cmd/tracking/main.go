@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 
@@ -18,6 +19,10 @@ import (
 	"github.com/Keneke-Einar/delivertrack/pkg/mongodb"
 	"github.com/Keneke-Einar/delivertrack/pkg/postgres"
 	"github.com/Keneke-Einar/delivertrack/pkg/websocket"
+
+	"github.com/Keneke-Einar/delivertrack/proto/tracking"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 var version = "dev"
@@ -62,7 +67,8 @@ func main() {
 	// Tracking layer
 	trackingRepo := trackingAdapters.NewMongoDBLocationRepository(mongoClient)
 	trackingService := trackingApp.NewTrackingService(trackingRepo)
-	trackingHandler := trackingAdapters.NewHTTPHandler(trackingService)
+	trackingHTTPHandler := trackingAdapters.NewHTTPHandler(trackingService)
+	trackingGRPCHandler := trackingAdapters.NewGRPCHandler(trackingService)
 
 	// Initialize WebSocket hub
 	wsHub := websocket.NewHub()
@@ -71,7 +77,7 @@ func main() {
 	// Start WebSocket hub in background
 	go wsHub.Run()
 
-	// Setup router with middleware
+	// Setup HTTP router with middleware
 	mux := http.NewServeMux()
 
 	// Public routes
@@ -81,7 +87,7 @@ func main() {
 	mux.HandleFunc("/register", authHandler.Register)
 
 	// Protected routes - tracking endpoints
-	mux.HandleFunc("/locations", authMiddleware(authService, trackingHandler.RecordLocation))
+	mux.HandleFunc("/locations", authMiddleware(authService, trackingHTTPHandler.RecordLocation))
 
 	// Delivery tracking routes
 	mux.HandleFunc("/deliveries/", func(w http.ResponseWriter, r *http.Request) {
@@ -92,13 +98,13 @@ func main() {
 			switch parts[1] {
 			case "track":
 				// GET /deliveries/{id}/track
-				authMiddleware(authService, trackingHandler.GetDeliveryTrack)(w, r)
+				authMiddleware(authService, trackingHTTPHandler.GetDeliveryTrack)(w, r)
 			case "location":
 				// GET /deliveries/{id}/location
-				authMiddleware(authService, trackingHandler.GetCurrentLocation)(w, r)
+				authMiddleware(authService, trackingHTTPHandler.GetCurrentLocation)(w, r)
 			case "eta":
 				// POST /deliveries/{id}/eta
-				authMiddleware(authService, trackingHandler.CalculateETA)(w, r)
+				authMiddleware(authService, trackingHTTPHandler.CalculateETA)(w, r)
 			default:
 				http.NotFound(w, r)
 			}
@@ -114,7 +120,7 @@ func main() {
 
 		if len(parts) >= 2 && parts[1] == "location" {
 			// GET /couriers/{id}/location
-			authMiddleware(authService, trackingHandler.GetCourierLocation)(w, r)
+			authMiddleware(authService, trackingHTTPHandler.GetCourierLocation)(w, r)
 		} else {
 			http.NotFound(w, r)
 		}
@@ -124,14 +130,34 @@ func main() {
 	mux.HandleFunc("/ws/deliveries/", wsHub.HandleWebSocket)
 
 	// Wrap with CORS middleware
-	handler := corsMiddleware(mux)
+	httpHandler := corsMiddleware(mux)
 
-	log.Printf("Tracking service v%s starting on port %s", version, port)
-	log.Printf("Endpoints: POST /login, POST /register")
-	log.Printf("           POST /locations, GET /deliveries/{id}/track, GET /deliveries/{id}/location, GET /couriers/{id}/location")
+	// Start HTTP server in a goroutine
+	go func() {
+		log.Printf("Tracking HTTP service v%s starting on port %s", version, port)
+		log.Printf("Endpoints: POST /login, POST /register")
+		log.Printf("           POST /locations, GET /deliveries/{id}/track, GET /deliveries/{id}/location, GET /couriers/{id}/location")
 
-	if err := http.ListenAndServe(":"+port, handler); err != nil {
-		log.Fatal(err)
+		if err := http.ListenAndServe(":"+port, httpHandler); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	// Start gRPC server
+	grpcPort := "50052"
+	lis, err := net.Listen("tcp", ":"+grpcPort)
+	if err != nil {
+		log.Fatalf("Failed to listen on gRPC port %s: %v", grpcPort, err)
+	}
+
+	grpcServer := grpc.NewServer()
+	tracking.RegisterTrackingServiceServer(grpcServer, trackingGRPCHandler)
+	reflection.Register(grpcServer) // Enable reflection for debugging
+
+	log.Printf("Tracking gRPC service v%s starting on port %s", version, grpcPort)
+
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Fatalf("Failed to serve gRPC: %v", err)
 	}
 }
 
