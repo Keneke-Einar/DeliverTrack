@@ -58,8 +58,8 @@ func ExtractTraceContextFromContext(ctx context.Context, serviceName, operation 
 	
 	if traceID == "" {
 		// Generate new trace if none exists
-		traceID = generateTraceID()
-		spanID = generateSpanID()
+		traceID = GenerateTraceID()
+		spanID = GenerateSpanID()
 	}
 	
 	return &TraceContext{
@@ -109,11 +109,11 @@ func getParentSpanIDFromContext(ctx context.Context) string {
 	return ""
 }
 
-func generateTraceID() string {
+func GenerateTraceID() string {
 	return fmt.Sprintf("%d", time.Now().UnixNano())
 }
 
-func generateSpanID() string {
+func GenerateSpanID() string {
 	return fmt.Sprintf("%d", time.Now().UnixNano())
 }
 

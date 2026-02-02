@@ -2,11 +2,9 @@ package adapters
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/Keneke-Einar/delivertrack/internal/delivery/ports"
 	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
@@ -66,11 +64,23 @@ func (h *HTTPHandler) CreateDelivery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create trace context for request tracing
+	traceID := r.Header.Get("X-Trace-ID")
+	spanID := r.Header.Get("X-Span-ID")
+	parentSpanID := r.Header.Get("X-Parent-Span-ID")
+
+	if traceID == "" {
+		traceID = messaging.GenerateTraceID()
+	}
+	if spanID == "" {
+		spanID = messaging.GenerateSpanID()
+	}
+
 	ctx := messaging.ContextWithTraceContext(r.Context(), &messaging.TraceContext{
-		TraceID:    generateTraceID(),
-		SpanID:     generateSpanID(),
-		ServiceName: "delivery-service",
-		Operation:  "create_delivery_http",
+		TraceID:      traceID,
+		SpanID:       spanID,
+		ParentSpanID: parentSpanID,
+		ServiceName:  "delivery-service",
+		Operation:    "create_delivery_http",
 	})
 
 	// Create delivery
@@ -105,8 +115,28 @@ func (h *HTTPHandler) GetDelivery(w http.ResponseWriter, r *http.Request) {
 	customerID, _ := r.Context().Value("customer_id").(*int)
 	courierID, _ := r.Context().Value("courier_id").(*int)
 
+	// Create trace context for request tracing
+	traceID := r.Header.Get("X-Trace-ID")
+	spanID := r.Header.Get("X-Span-ID")
+	parentSpanID := r.Header.Get("X-Parent-Span-ID")
+
+	if traceID == "" {
+		traceID = messaging.GenerateTraceID()
+	}
+	if spanID == "" {
+		spanID = messaging.GenerateSpanID()
+	}
+
+	ctx := messaging.ContextWithTraceContext(r.Context(), &messaging.TraceContext{
+		TraceID:      traceID,
+		SpanID:       spanID,
+		ParentSpanID: parentSpanID,
+		ServiceName:  "delivery-service",
+		Operation:    "get_delivery_http",
+	})
+
 	// Get delivery
-	delivery, err := h.service.GetDelivery(r.Context(), ports.GetDeliveryRequest{
+	delivery, err := h.service.GetDelivery(ctx, ports.GetDeliveryRequest{
 		ID: id,
 		AuthContext: ports.AuthContext{
 			Role:           userRole,
@@ -155,8 +185,28 @@ func (h *HTTPHandler) ListDeliveries(w http.ResponseWriter, r *http.Request) {
 	customerID, _ := r.Context().Value("customer_id").(*int)
 	courierID, _ := r.Context().Value("courier_id").(*int)
 
+	// Create trace context for request tracing
+	traceID := r.Header.Get("X-Trace-ID")
+	spanID := r.Header.Get("X-Span-ID")
+	parentSpanID := r.Header.Get("X-Parent-Span-ID")
+
+	if traceID == "" {
+		traceID = messaging.GenerateTraceID()
+	}
+	if spanID == "" {
+		spanID = messaging.GenerateSpanID()
+	}
+
+	ctx := messaging.ContextWithTraceContext(r.Context(), &messaging.TraceContext{
+		TraceID:      traceID,
+		SpanID:       spanID,
+		ParentSpanID: parentSpanID,
+		ServiceName:  "delivery-service",
+		Operation:    "list_deliveries_http",
+	})
+
 	// List deliveries
-	deliveries, err := h.service.ListDeliveries(r.Context(), ports.ListDeliveriesRequest{
+	deliveries, err := h.service.ListDeliveries(ctx, ports.ListDeliveriesRequest{
 		Status:     status,
 		CustomerID: filterCustomerID,
 		AuthContext: ports.AuthContext{
@@ -206,8 +256,28 @@ func (h *HTTPHandler) UpdateDeliveryStatus(w http.ResponseWriter, r *http.Reques
 	customerID, _ := r.Context().Value("customer_id").(*int)
 	courierID, _ := r.Context().Value("courier_id").(*int)
 
+	// Create trace context for request tracing
+	traceID := r.Header.Get("X-Trace-ID")
+	spanID := r.Header.Get("X-Span-ID")
+	parentSpanID := r.Header.Get("X-Parent-Span-ID")
+
+	if traceID == "" {
+		traceID = messaging.GenerateTraceID()
+	}
+	if spanID == "" {
+		spanID = messaging.GenerateSpanID()
+	}
+
+	ctx := messaging.ContextWithTraceContext(r.Context(), &messaging.TraceContext{
+		TraceID:      traceID,
+		SpanID:       spanID,
+		ParentSpanID: parentSpanID,
+		ServiceName:  "delivery-service",
+		Operation:    "update_delivery_status_http",
+	})
+
 	// Update status
-	err = h.service.UpdateDeliveryStatus(r.Context(), ports.UpdateDeliveryStatusRequest{
+	err = h.service.UpdateDeliveryStatus(ctx, ports.UpdateDeliveryStatusRequest{
 		ID:     id,
 		Status: req.Status,
 		Notes:  req.Notes,
@@ -243,13 +313,4 @@ func sendErrorResponse(w http.ResponseWriter, message string, statusCode int) {
 		Error:   http.StatusText(statusCode),
 		Message: message,
 	})
-}
-
-// Helper functions for trace ID generation
-func generateTraceID() string {
-	return fmt.Sprintf("%d", time.Now().UnixNano())
-}
-
-func generateSpanID() string {
-	return fmt.Sprintf("%d", time.Now().UnixNano())
 }

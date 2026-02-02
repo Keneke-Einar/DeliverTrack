@@ -5,7 +5,6 @@ go 1.25.5
 require (
 	github.com/didip/tollbooth v4.0.2+incompatible
 	github.com/golang-jwt/jwt/v5 v5.2.0
-	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/vault/api v1.22.0
 	github.com/lib/pq v1.10.9

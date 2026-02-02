@@ -15,6 +15,7 @@ import (
 	authPorts "github.com/Keneke-Einar/delivertrack/pkg/auth/ports"
 
 	"github.com/Keneke-Einar/delivertrack/pkg/config"
+	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/pkg/postgres"
 
 	"github.com/didip/tollbooth"
@@ -164,10 +165,28 @@ func (g *Gateway) loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
+		// Create trace context for incoming request
+		traceID := messaging.GenerateTraceID()
+		spanID := messaging.GenerateSpanID()
+
+		traceCtx := &messaging.TraceContext{
+			TraceID:     traceID,
+			SpanID:      spanID,
+			ServiceName: "gateway",
+			Operation:   r.Method + " " + r.URL.Path,
+		}
+
+		// Add trace context to request context
+		ctx := messaging.ContextWithTraceContext(r.Context(), traceCtx)
+
+		// Add trace headers to request for downstream services
+		r.Header.Set("X-Trace-ID", traceID)
+		r.Header.Set("X-Span-ID", spanID)
+
 		// Create a response writer wrapper to capture status code
 		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
-		next.ServeHTTP(wrapped, r)
+		next.ServeHTTP(wrapped, r.WithContext(ctx))
 
 		g.logger.WithFields(logrus.Fields{
 			"method":      r.Method,
@@ -176,6 +195,7 @@ func (g *Gateway) loggingMiddleware(next http.Handler) http.Handler {
 			"duration":    time.Since(start),
 			"user_agent":  r.Header.Get("User-Agent"),
 			"remote_addr": r.RemoteAddr,
+			"trace_id":    traceID,
 		}).Info("Request processed")
 	})
 }
