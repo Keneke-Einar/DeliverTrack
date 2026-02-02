@@ -3,9 +3,11 @@ package adapters
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/Keneke-Einar/delivertrack/internal/notification/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/notification/ports"
+	httputil "github.com/Keneke-Einar/delivertrack/pkg/http"
 )
 
 // HTTPHandler handles HTTP requests for notification operations
@@ -23,9 +25,12 @@ func NewHTTPHandler(service ports.NotificationService) *HTTPHandler {
 // SendNotification handles POST /notifications/send
 func (h *HTTPHandler) SendNotification(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		httputil.SendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	// Extract user and trace context
+	traceCtx := httputil.ExtractTraceContext(r, "notification-service", "send_notification_http")
 
 	var req struct {
 		UserID    int    `json:"user_id"`
@@ -36,13 +41,13 @@ func (h *HTTPHandler) SendNotification(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	notification, err := h.service.SendNotification(r.Context(), req.UserID, domain.NotificationType(req.Type), req.Subject, req.Message, req.Recipient)
+	notification, err := h.service.SendNotification(traceCtx, req.UserID, domain.NotificationType(req.Type), req.Subject, req.Message, req.Recipient)
 	if err != nil {
-		http.Error(w, "Failed to send notification", http.StatusInternalServerError)
+		httputil.SendErrorResponse(w, "Failed to send notification", http.StatusInternalServerError)
 		return
 	}
 
@@ -53,21 +58,28 @@ func (h *HTTPHandler) SendNotification(w http.ResponseWriter, r *http.Request) {
 // GetNotifications handles GET /notifications
 func (h *HTTPHandler) GetNotifications(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		httputil.SendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	// Extract user and trace context
+	traceCtx := httputil.ExtractTraceContext(r, "notification-service", "get_notifications_http")
 
 	userIDStr := r.URL.Query().Get("user_id")
 	if userIDStr == "" {
-		http.Error(w, "user_id required", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "user_id required", http.StatusBadRequest)
 		return
 	}
 
-	userID := 0 // parse, but for now assume
-
-	notifications, err := h.service.GetUserNotifications(r.Context(), userID, 10)
+	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
-		http.Error(w, "Failed to get notifications", http.StatusInternalServerError)
+		httputil.SendErrorResponse(w, "Invalid user_id", http.StatusBadRequest)
+		return
+	}
+
+	notifications, err := h.service.GetUserNotifications(traceCtx, userID, 10)
+	if err != nil {
+		httputil.SendErrorResponse(w, "Failed to get notifications", http.StatusInternalServerError)
 		return
 	}
 
@@ -83,22 +95,25 @@ func (h *HTTPHandler) GetUserNotifications(w http.ResponseWriter, r *http.Reques
 // MarkAsRead handles POST /notifications/mark-read
 func (h *HTTPHandler) MarkAsRead(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		httputil.SendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	// Extract user and trace context
+	traceCtx := httputil.ExtractTraceContext(r, "notification-service", "mark_as_read_http")
 
 	var req struct {
 		NotificationID int `json:"notification_id"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	err := h.service.MarkAsRead(r.Context(), req.NotificationID)
+	err := h.service.MarkAsRead(traceCtx, req.NotificationID)
 	if err != nil {
-		http.Error(w, "Failed to mark as read", http.StatusInternalServerError)
+		httputil.SendErrorResponse(w, "Failed to mark as read", http.StatusInternalServerError)
 		return
 	}
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/ports"
+	httputil "github.com/Keneke-Einar/delivertrack/pkg/http"
 )
 
 // HTTPHandler handles HTTP requests for tracking operations
@@ -24,41 +25,43 @@ func NewHTTPHandler(service ports.TrackingService) *HTTPHandler {
 // RecordLocation handles POST /locations
 func (h *HTTPHandler) RecordLocation(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		sendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
+		httputil.SendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req ports.RecordLocationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendErrorResponse(w, "Invalid request body", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	// Validate required fields
 	if req.DeliveryID == 0 || req.CourierID == 0 {
-		sendErrorResponse(w, "delivery_id and courier_id are required", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "delivery_id and courier_id are required", http.StatusBadRequest)
 		return
 	}
 
 	// Get user context from auth middleware
-	userRole, _ := r.Context().Value("role").(string)
-	courierID, _ := r.Context().Value("courier_id").(*int)
+	userCtx := httputil.ExtractUserContext(r)
 
 	// Authorization: only couriers can record locations, and only their own
-	if userRole != "courier" {
-		sendErrorResponse(w, "Only couriers can record locations", http.StatusForbidden)
+	if userCtx.Role != "courier" {
+		httputil.SendErrorResponse(w, "Only couriers can record locations", http.StatusForbidden)
 		return
 	}
 
-	if courierID == nil || *courierID != req.CourierID {
-		sendErrorResponse(w, "Couriers can only record their own locations", http.StatusForbidden)
+	if userCtx.CourierID == nil || *userCtx.CourierID != req.CourierID {
+		httputil.SendErrorResponse(w, "Couriers can only record their own locations", http.StatusForbidden)
 		return
 	}
+
+	// Create trace context for request tracing
+	ctx := httputil.ExtractTraceContext(r, "tracking-service", "record_location_http")
 
 	// Record location
-	location, err := h.service.RecordLocation(r.Context(), req)
+	location, err := h.service.RecordLocation(ctx, req)
 	if err != nil {
-		sendErrorResponse(w, err.Error(), http.StatusInternalServerError)
+		httputil.SendErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -70,7 +73,7 @@ func (h *HTTPHandler) RecordLocation(w http.ResponseWriter, r *http.Request) {
 // GetDeliveryTrack handles GET /deliveries/{id}/track
 func (h *HTTPHandler) GetDeliveryTrack(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		sendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
+		httputil.SendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -78,13 +81,13 @@ func (h *HTTPHandler) GetDeliveryTrack(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/deliveries/")
 	parts := strings.Split(path, "/")
 	if len(parts) < 2 || parts[1] != "track" {
-		sendErrorResponse(w, "Invalid path", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "Invalid path", http.StatusBadRequest)
 		return
 	}
 
 	deliveryID, err := strconv.Atoi(parts[0])
 	if err != nil {
-		sendErrorResponse(w, "Invalid delivery ID", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "Invalid delivery ID", http.StatusBadRequest)
 		return
 	}
 
@@ -98,26 +101,27 @@ func (h *HTTPHandler) GetDeliveryTrack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get user context
-	userRole, _ := r.Context().Value("role").(string)
-	customerID, _ := r.Context().Value("customer_id").(*int)
-	courierID, _ := r.Context().Value("courier_id").(*int)
+	userCtx := httputil.ExtractUserContext(r)
 
 	// Authorization: customers can only track their own deliveries, couriers can track assigned deliveries
-	if userRole == "customer" && customerID != nil {
+	if userCtx.Role == "customer" && userCtx.CustomerID != nil {
 		// In a real implementation, we'd check if the delivery belongs to this customer
 		// For now, we'll allow it
-	} else if userRole == "courier" && courierID != nil {
+	} else if userCtx.Role == "courier" && userCtx.CourierID != nil {
 		// In a real implementation, we'd check if the courier is assigned to this delivery
 		// For now, we'll allow it
 	}
 
+	// Create trace context for request tracing
+	ctx := httputil.ExtractTraceContext(r, "tracking-service", "get_delivery_track_http")
+
 	// Get delivery track
-	locations, err := h.service.GetDeliveryTrack(r.Context(), ports.GetDeliveryTrackRequest{
+	locations, err := h.service.GetDeliveryTrack(ctx, ports.GetDeliveryTrackRequest{
 		DeliveryID: deliveryID,
 		Limit:      limit,
 	})
 	if err != nil {
-		sendErrorResponse(w, err.Error(), http.StatusInternalServerError)
+		httputil.SendErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -131,7 +135,7 @@ func (h *HTTPHandler) GetDeliveryTrack(w http.ResponseWriter, r *http.Request) {
 // GetCurrentLocation handles GET /deliveries/{id}/location
 func (h *HTTPHandler) GetCurrentLocation(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		sendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
+		httputil.SendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -139,34 +143,35 @@ func (h *HTTPHandler) GetCurrentLocation(w http.ResponseWriter, r *http.Request)
 	path := strings.TrimPrefix(r.URL.Path, "/deliveries/")
 	parts := strings.Split(path, "/")
 	if len(parts) < 2 || parts[1] != "location" {
-		sendErrorResponse(w, "Invalid path", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "Invalid path", http.StatusBadRequest)
 		return
 	}
 
 	deliveryID, err := strconv.Atoi(parts[0])
 	if err != nil {
-		sendErrorResponse(w, "Invalid delivery ID", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "Invalid delivery ID", http.StatusBadRequest)
 		return
 	}
 
 	// Get user context
-	userRole, _ := r.Context().Value("role").(string)
-	customerID, _ := r.Context().Value("customer_id").(*int)
-	courierID, _ := r.Context().Value("courier_id").(*int)
+	userCtx := httputil.ExtractUserContext(r)
 
 	// Authorization: customers can only track their own deliveries, couriers can track assigned deliveries
-	if userRole == "customer" && customerID != nil {
+	if userCtx.Role == "customer" && userCtx.CustomerID != nil {
 		// In a real implementation, we'd check if the delivery belongs to this customer
-	} else if userRole == "courier" && courierID != nil {
+	} else if userCtx.Role == "courier" && userCtx.CourierID != nil {
 		// In a real implementation, we'd check if the courier is assigned to this delivery
 	}
 
+	// Create trace context for request tracing
+	ctx := httputil.ExtractTraceContext(r, "tracking-service", "get_current_location_http")
+
 	// Get current location
-	location, err := h.service.GetCurrentLocation(r.Context(), ports.GetCurrentLocationRequest{
+	location, err := h.service.GetCurrentLocation(ctx, ports.GetCurrentLocationRequest{
 		DeliveryID: deliveryID,
 	})
 	if err != nil {
-		sendErrorResponse(w, err.Error(), http.StatusInternalServerError)
+		httputil.SendErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -177,7 +182,7 @@ func (h *HTTPHandler) GetCurrentLocation(w http.ResponseWriter, r *http.Request)
 // GetCourierLocation handles GET /couriers/{id}/location
 func (h *HTTPHandler) GetCourierLocation(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		sendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
+		httputil.SendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -185,32 +190,34 @@ func (h *HTTPHandler) GetCourierLocation(w http.ResponseWriter, r *http.Request)
 	path := strings.TrimPrefix(r.URL.Path, "/couriers/")
 	parts := strings.Split(path, "/")
 	if len(parts) < 2 || parts[1] != "location" {
-		sendErrorResponse(w, "Invalid path", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "Invalid path", http.StatusBadRequest)
 		return
 	}
 
 	courierID, err := strconv.Atoi(parts[0])
 	if err != nil {
-		sendErrorResponse(w, "Invalid courier ID", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "Invalid courier ID", http.StatusBadRequest)
 		return
 	}
 
 	// Get user context
-	userRole, _ := r.Context().Value("role").(string)
-	userCourierID, _ := r.Context().Value("courier_id").(*int)
+	userCtx := httputil.ExtractUserContext(r)
 
 	// Authorization: couriers can only access their own location, admins can access any
-	if userRole == "courier" && userCourierID != nil && *userCourierID != courierID {
-		sendErrorResponse(w, "Couriers can only access their own location", http.StatusForbidden)
+	if userCtx.Role == "courier" && userCtx.CourierID != nil && *userCtx.CourierID != courierID {
+		httputil.SendErrorResponse(w, "Couriers can only access their own location", http.StatusForbidden)
 		return
 	}
 
+	// Create trace context for request tracing
+	ctx := httputil.ExtractTraceContext(r, "tracking-service", "get_courier_location_http")
+
 	// Get courier location
-	location, err := h.service.GetCourierLocation(r.Context(), ports.GetCourierLocationRequest{
+	location, err := h.service.GetCourierLocation(ctx, ports.GetCourierLocationRequest{
 		CourierID: courierID,
 	})
 	if err != nil {
-		sendErrorResponse(w, err.Error(), http.StatusInternalServerError)
+		httputil.SendErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -221,21 +228,25 @@ func (h *HTTPHandler) GetCourierLocation(w http.ResponseWriter, r *http.Request)
 // CalculateETA handles POST /deliveries/{id}/eta
 func (h *HTTPHandler) CalculateETA(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		sendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
+		httputil.SendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	// Extract user and trace context
+	userCtx := httputil.ExtractUserContext(r)
+	traceCtx := httputil.ExtractTraceContext(r, "tracking-service", "calculate_eta_http")
 
 	// Extract delivery ID from path
 	path := strings.TrimPrefix(r.URL.Path, "/deliveries/")
 	parts := strings.Split(path, "/")
 	if len(parts) < 2 || parts[1] != "eta" {
-		sendErrorResponse(w, "Invalid path", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "Invalid path", http.StatusBadRequest)
 		return
 	}
 
 	deliveryID, err := strconv.Atoi(parts[0])
 	if err != nil {
-		sendErrorResponse(w, "Invalid delivery ID", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "Invalid delivery ID", http.StatusBadRequest)
 		return
 	}
 
@@ -245,55 +256,34 @@ func (h *HTTPHandler) CalculateETA(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendErrorResponse(w, "Invalid request body", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	// Validate required fields
 	if req.DestLat == 0 && req.DestLng == 0 {
-		sendErrorResponse(w, "dest_lat and dest_lng are required", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "dest_lat and dest_lng are required", http.StatusBadRequest)
 		return
 	}
 
-	// Get user context for authorization
-	userRole, _ := r.Context().Value("role").(string)
-	customerID, _ := r.Context().Value("customer_id").(*int)
-	courierID, _ := r.Context().Value("courier_id").(*int)
-
 	// Authorization: customers can calculate ETA for their deliveries, couriers for assigned deliveries
-	if userRole == "customer" && customerID != nil {
+	if userCtx.Role == "customer" && userCtx.CustomerID != nil {
 		// In a real implementation, we'd check if the delivery belongs to this customer
-	} else if userRole == "courier" && courierID != nil {
+	} else if userCtx.Role == "courier" && userCtx.CourierID != nil {
 		// In a real implementation, we'd check if the courier is assigned to this delivery
 	}
 
 	// Calculate ETA
-	eta, err := h.service.CalculateETAToDestination(r.Context(), ports.CalculateETAToDestinationRequest{
+	eta, err := h.service.CalculateETAToDestination(traceCtx, ports.CalculateETAToDestinationRequest{
 		DeliveryID: deliveryID,
 		DestLat:    req.DestLat,
 		DestLng:    req.DestLng,
 	})
 	if err != nil {
-		sendErrorResponse(w, err.Error(), http.StatusInternalServerError)
+		httputil.SendErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(eta)
-}
-
-// ErrorResponse represents an error response
-type ErrorResponse struct {
-	Error   string `json:"error"`
-	Message string `json:"message,omitempty"`
-}
-
-// sendErrorResponse sends a JSON error response
-func sendErrorResponse(w http.ResponseWriter, message string, statusCode int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(ErrorResponse{
-		Error:   http.StatusText(statusCode),
-		Message: message,
-	})
 }

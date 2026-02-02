@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/Keneke-Einar/delivertrack/internal/delivery/ports"
-	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
+	httputil "github.com/Keneke-Einar/delivertrack/pkg/http"
 )
 
 // HTTPHandler handles HTTP requests for delivery operations
@@ -28,65 +28,41 @@ type UpdateStatusRequest struct {
 	Notes  string `json:"notes,omitempty"`
 }
 
-// ErrorResponse represents an error response
-type ErrorResponse struct {
-	Error   string `json:"error"`
-	Message string `json:"message,omitempty"`
-}
-
 // CreateDelivery handles POST /deliveries
 func (h *HTTPHandler) CreateDelivery(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		sendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
+		httputil.SendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req ports.CreateDeliveryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendErrorResponse(w, "Invalid request body", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	// Validate required fields
 	if req.CustomerID == 0 || req.PickupLocation == "" || req.DeliveryLocation == "" {
-		sendErrorResponse(w, "customer_id, pickup_location, and delivery_location are required", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "customer_id, pickup_location, and delivery_location are required", http.StatusBadRequest)
 		return
 	}
 
 	// Get user context from auth middleware
-	userRole, _ := r.Context().Value("role").(string)
-	customerID, _ := r.Context().Value("customer_id").(*int)
+	userCtx := httputil.ExtractUserContext(r)
 
 	// Authorization: customers can only create their own deliveries
-	if userRole == "customer" && customerID != nil && *customerID != req.CustomerID {
-		sendErrorResponse(w, "Customers can only create their own deliveries", http.StatusForbidden)
+	if userCtx.Role == "customer" && userCtx.CustomerID != nil && *userCtx.CustomerID != req.CustomerID {
+		httputil.SendErrorResponse(w, "Customers can only create their own deliveries", http.StatusForbidden)
 		return
 	}
 
 	// Create trace context for request tracing
-	traceID := r.Header.Get("X-Trace-ID")
-	spanID := r.Header.Get("X-Span-ID")
-	parentSpanID := r.Header.Get("X-Parent-Span-ID")
-
-	if traceID == "" {
-		traceID = messaging.GenerateTraceID()
-	}
-	if spanID == "" {
-		spanID = messaging.GenerateSpanID()
-	}
-
-	ctx := messaging.ContextWithTraceContext(r.Context(), &messaging.TraceContext{
-		TraceID:      traceID,
-		SpanID:       spanID,
-		ParentSpanID: parentSpanID,
-		ServiceName:  "delivery-service",
-		Operation:    "create_delivery_http",
-	})
+	ctx := httputil.ExtractTraceContext(r, "delivery-service", "create_delivery_http")
 
 	// Create delivery
 	delivery, err := h.service.CreateDelivery(ctx, req)
 	if err != nil {
-		sendErrorResponse(w, err.Error(), http.StatusInternalServerError)
+		httputil.SendErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -98,7 +74,7 @@ func (h *HTTPHandler) CreateDelivery(w http.ResponseWriter, r *http.Request) {
 // GetDelivery handles GET /deliveries/:id
 func (h *HTTPHandler) GetDelivery(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		sendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
+		httputil.SendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -106,42 +82,23 @@ func (h *HTTPHandler) GetDelivery(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/deliveries/")
 	id, err := strconv.Atoi(path)
 	if err != nil {
-		sendErrorResponse(w, "Invalid delivery ID", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "Invalid delivery ID", http.StatusBadRequest)
 		return
 	}
 
 	// Get user context
-	userRole, _ := r.Context().Value("role").(string)
-	customerID, _ := r.Context().Value("customer_id").(*int)
-	courierID, _ := r.Context().Value("courier_id").(*int)
+	userCtx := httputil.ExtractUserContext(r)
 
 	// Create trace context for request tracing
-	traceID := r.Header.Get("X-Trace-ID")
-	spanID := r.Header.Get("X-Span-ID")
-	parentSpanID := r.Header.Get("X-Parent-Span-ID")
-
-	if traceID == "" {
-		traceID = messaging.GenerateTraceID()
-	}
-	if spanID == "" {
-		spanID = messaging.GenerateSpanID()
-	}
-
-	ctx := messaging.ContextWithTraceContext(r.Context(), &messaging.TraceContext{
-		TraceID:      traceID,
-		SpanID:       spanID,
-		ParentSpanID: parentSpanID,
-		ServiceName:  "delivery-service",
-		Operation:    "get_delivery_http",
-	})
+	ctx := httputil.ExtractTraceContext(r, "delivery-service", "get_delivery_http")
 
 	// Get delivery
 	delivery, err := h.service.GetDelivery(ctx, ports.GetDeliveryRequest{
 		ID: id,
 		AuthContext: ports.AuthContext{
-			Role:           userRole,
-			UserCustomerID: customerID,
-			UserCourierID:  courierID,
+			Role:           userCtx.Role,
+			UserCustomerID: userCtx.CustomerID,
+			UserCourierID:  userCtx.CourierID,
 		},
 	})
 	if err != nil {
@@ -151,7 +108,7 @@ func (h *HTTPHandler) GetDelivery(w http.ResponseWriter, r *http.Request) {
 		} else if err.Error() == "delivery not found" {
 			statusCode = http.StatusNotFound
 		}
-		sendErrorResponse(w, err.Error(), statusCode)
+		httputil.SendErrorResponse(w, err.Error(), statusCode)
 		return
 	}
 
@@ -162,7 +119,7 @@ func (h *HTTPHandler) GetDelivery(w http.ResponseWriter, r *http.Request) {
 // ListDeliveries handles GET /deliveries
 func (h *HTTPHandler) ListDeliveries(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		sendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
+		httputil.SendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -175,48 +132,29 @@ func (h *HTTPHandler) ListDeliveries(w http.ResponseWriter, r *http.Request) {
 		var err error
 		filterCustomerID, err = strconv.Atoi(customerIDParam)
 		if err != nil {
-			sendErrorResponse(w, "Invalid customer_id", http.StatusBadRequest)
+			httputil.SendErrorResponse(w, "Invalid customer_id", http.StatusBadRequest)
 			return
 		}
 	}
 
 	// Get user context
-	userRole, _ := r.Context().Value("role").(string)
-	customerID, _ := r.Context().Value("customer_id").(*int)
-	courierID, _ := r.Context().Value("courier_id").(*int)
+	userCtx := httputil.ExtractUserContext(r)
 
 	// Create trace context for request tracing
-	traceID := r.Header.Get("X-Trace-ID")
-	spanID := r.Header.Get("X-Span-ID")
-	parentSpanID := r.Header.Get("X-Parent-Span-ID")
-
-	if traceID == "" {
-		traceID = messaging.GenerateTraceID()
-	}
-	if spanID == "" {
-		spanID = messaging.GenerateSpanID()
-	}
-
-	ctx := messaging.ContextWithTraceContext(r.Context(), &messaging.TraceContext{
-		TraceID:      traceID,
-		SpanID:       spanID,
-		ParentSpanID: parentSpanID,
-		ServiceName:  "delivery-service",
-		Operation:    "list_deliveries_http",
-	})
+	ctx := httputil.ExtractTraceContext(r, "delivery-service", "list_deliveries_http")
 
 	// List deliveries
 	deliveries, err := h.service.ListDeliveries(ctx, ports.ListDeliveriesRequest{
 		Status:     status,
 		CustomerID: filterCustomerID,
 		AuthContext: ports.AuthContext{
-			Role:           userRole,
-			UserCustomerID: customerID,
-			UserCourierID:  courierID,
+			Role:           userCtx.Role,
+			UserCustomerID: userCtx.CustomerID,
+			UserCourierID:  userCtx.CourierID,
 		},
 	})
 	if err != nil {
-		sendErrorResponse(w, err.Error(), http.StatusInternalServerError)
+		httputil.SendErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -227,7 +165,7 @@ func (h *HTTPHandler) ListDeliveries(w http.ResponseWriter, r *http.Request) {
 // UpdateDeliveryStatus handles PUT /deliveries/:id/status
 func (h *HTTPHandler) UpdateDeliveryStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut {
-		sendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
+		httputil.SendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -236,45 +174,26 @@ func (h *HTTPHandler) UpdateDeliveryStatus(w http.ResponseWriter, r *http.Reques
 	path = strings.TrimSuffix(path, "/status")
 	id, err := strconv.Atoi(path)
 	if err != nil {
-		sendErrorResponse(w, "Invalid delivery ID", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "Invalid delivery ID", http.StatusBadRequest)
 		return
 	}
 
 	var req UpdateStatusRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendErrorResponse(w, "Invalid request body", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	if req.Status == "" {
-		sendErrorResponse(w, "status is required", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "status is required", http.StatusBadRequest)
 		return
 	}
 
 	// Get user context
-	userRole, _ := r.Context().Value("role").(string)
-	customerID, _ := r.Context().Value("customer_id").(*int)
-	courierID, _ := r.Context().Value("courier_id").(*int)
+	userCtx := httputil.ExtractUserContext(r)
 
 	// Create trace context for request tracing
-	traceID := r.Header.Get("X-Trace-ID")
-	spanID := r.Header.Get("X-Span-ID")
-	parentSpanID := r.Header.Get("X-Parent-Span-ID")
-
-	if traceID == "" {
-		traceID = messaging.GenerateTraceID()
-	}
-	if spanID == "" {
-		spanID = messaging.GenerateSpanID()
-	}
-
-	ctx := messaging.ContextWithTraceContext(r.Context(), &messaging.TraceContext{
-		TraceID:      traceID,
-		SpanID:       spanID,
-		ParentSpanID: parentSpanID,
-		ServiceName:  "delivery-service",
-		Operation:    "update_delivery_status_http",
-	})
+	ctx := httputil.ExtractTraceContext(r, "delivery-service", "update_delivery_status_http")
 
 	// Update status
 	err = h.service.UpdateDeliveryStatus(ctx, ports.UpdateDeliveryStatusRequest{
@@ -282,9 +201,9 @@ func (h *HTTPHandler) UpdateDeliveryStatus(w http.ResponseWriter, r *http.Reques
 		Status: req.Status,
 		Notes:  req.Notes,
 		AuthContext: ports.AuthContext{
-			Role:           userRole,
-			UserCustomerID: customerID,
-			UserCourierID:  courierID,
+			Role:           userCtx.Role,
+			UserCustomerID: userCtx.CustomerID,
+			UserCourierID:  userCtx.CourierID,
 		},
 	})
 	if err != nil {
@@ -296,7 +215,7 @@ func (h *HTTPHandler) UpdateDeliveryStatus(w http.ResponseWriter, r *http.Reques
 		} else if err.Error() == "invalid delivery status" {
 			statusCode = http.StatusBadRequest
 		}
-		sendErrorResponse(w, err.Error(), statusCode)
+		httputil.SendErrorResponse(w, err.Error(), statusCode)
 		return
 	}
 
@@ -305,12 +224,3 @@ func (h *HTTPHandler) UpdateDeliveryStatus(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(map[string]string{"message": "Status updated successfully"})
 }
 
-// sendErrorResponse sends a JSON error response
-func sendErrorResponse(w http.ResponseWriter, message string, statusCode int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(ErrorResponse{
-		Error:   http.StatusText(statusCode),
-		Message: message,
-	})
-}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/Keneke-Einar/delivertrack/internal/analytics/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/analytics/ports"
+	httputil "github.com/Keneke-Einar/delivertrack/pkg/http"
 )
 
 // HTTPHandler handles HTTP requests for analytics operations
@@ -23,9 +24,12 @@ func NewHTTPHandler(service ports.AnalyticsService) *HTTPHandler {
 // RecordMetric handles POST /analytics/metrics
 func (h *HTTPHandler) RecordMetric(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		httputil.SendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	// Extract trace context
+	traceCtx := httputil.ExtractTraceContext(r, "analytics-service", "record_metric_http")
 
 	var req struct {
 		Type       string                 `json:"type"`
@@ -36,13 +40,13 @@ func (h *HTTPHandler) RecordMetric(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		httputil.SendErrorResponse(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	metric, err := h.service.RecordMetric(r.Context(), domain.MetricType(req.Type), req.EntityID, req.EntityType, req.Value, req.Metadata)
+	metric, err := h.service.RecordMetric(traceCtx, domain.MetricType(req.Type), req.EntityID, req.EntityType, req.Value, req.Metadata)
 	if err != nil {
-		http.Error(w, "Failed to record metric", http.StatusInternalServerError)
+		httputil.SendErrorResponse(w, "Failed to record metric", http.StatusInternalServerError)
 		return
 	}
 
@@ -53,18 +57,21 @@ func (h *HTTPHandler) RecordMetric(w http.ResponseWriter, r *http.Request) {
 // GetDeliveryStats handles GET /analytics/delivery-stats
 func (h *HTTPHandler) GetDeliveryStats(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		httputil.SendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	// Extract trace context
+	traceCtx := httputil.ExtractTraceContext(r, "analytics-service", "get_delivery_stats_http")
 
 	period := r.URL.Query().Get("period")
 	if period == "" {
 		period = "last_30_days"
 	}
 
-	stats, err := h.service.GetDeliveryStats(r.Context(), period)
+	stats, err := h.service.GetDeliveryStats(traceCtx, period)
 	if err != nil {
-		http.Error(w, "Failed to get delivery stats", http.StatusInternalServerError)
+		httputil.SendErrorResponse(w, "Failed to get delivery stats", http.StatusInternalServerError)
 		return
 	}
 

@@ -260,3 +260,66 @@
 - [ ] Create admin dashboard with real-time map
 - [ ] Add real-time metrics visualization
 - [ ] Implement alerting system
+
+---
+
+## Code Quality & Optimization
+
+### Shared HTTP Utilities
+- [x] Create `pkg/http` package with common HTTP utilities:
+  - [x] `ErrorResponse` struct and `SendErrorResponse()` function
+  - [x] `ExtractUserContext()` helper for role/customer_id/courier_id extraction
+  - [x] `ExtractTraceContext()` helper for HTTP header trace extraction
+  - [x] Refactored delivery service to use shared utilities
+  - [ ] Common request validation helpers
+
+### Domain Model Unification
+- [ ] Create shared domain constants and errors:
+  - [ ] `pkg/domain` with common status constants (pending, assigned, etc.)
+  - [ ] Shared error types (`ErrUnauthorized`, `ErrNotFound`, etc.)
+  - [ ] Common validation helper functions
+
+### Service Initialization Refactoring
+- [ ] Create `pkg/service` package with common service setup:
+  - [ ] `InitDatabase()` helper for PostgreSQL/MongoDB setup
+  - [ ] `InitGRPCClient()` helper for gRPC client initialization with interceptors
+  - [ ] `InitAuthService()` helper for JWT authentication setup
+  - [ ] `InitEventPublisher()` helper for RabbitMQ setup
+
+### Configuration Improvements
+- [ ] Enhance configuration package:
+  - [ ] Add configuration validation
+  - [ ] Environment variable fallbacks
+  - [ ] Configuration hot-reload capability
+
+### Error Handling Standardization
+- [ ] Implement consistent error handling patterns:
+  - [ ] Structured error responses with error codes
+  - [ ] Error logging with correlation IDs
+  - [ ] Graceful error recovery mechanisms
+
+### Code Organization
+- [ ] Refactor large files (>300 lines) into smaller, focused modules
+- [ ] Implement consistent naming conventions across services
+- [ ] Add comprehensive Go documentation comments
+- [ ] Implement interface segregation for better testability
+
+### Performance Optimizations
+- [ ] Add object pooling for frequently allocated objects
+- [ ] Implement connection pooling optimizations
+- [ ] Add caching for frequently accessed data
+- [ ] Optimize JSON marshaling/unmarshaling
+
+### Testing Improvements
+- [ ] Add shared test utilities:
+  - [ ] `pkg/testutil` with common test helpers
+  - [ ] Mock implementations for external dependencies
+  - [ ] Test data factories
+- [ ] Increase test coverage to >90% for all packages
+- [ ] Add integration test helpers
+- [ ] Implement property-based testing for domain logic
+
+### Dependency Management
+- [ ] Clean up import statements and remove unused dependencies
+- [ ] Implement dependency injection pattern for better testability
+- [ ] Add module versioning and update management
