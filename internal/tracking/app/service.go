@@ -7,26 +7,30 @@ import (
 
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/ports"
+	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
+	"github.com/Keneke-Einar/delivertrack/pkg/resilience"
 	"github.com/Keneke-Einar/delivertrack/pkg/websocket"
 	"github.com/Keneke-Einar/delivertrack/proto/delivery"
-	"github.com/Keneke-Einar/delivertrack/proto/notification"
+	"github.com/google/uuid"
 )
 
 // TrackingService implements tracking use cases
 type TrackingService struct {
-	repo              ports.LocationRepository
-	wsHub             *websocket.Hub
-	deliveryClient    delivery.DeliveryServiceClient
-	notificationClient notification.NotificationServiceClient
+	repo           ports.LocationRepository
+	wsHub          *websocket.Hub
+	publisher      messaging.Publisher
+	deliveryClient delivery.DeliveryServiceClient
+	deliveryCB     *resilience.CircuitBreaker
 }
 
 // NewTrackingService creates a new tracking service
-func NewTrackingService(repo ports.LocationRepository, deliveryClient delivery.DeliveryServiceClient, notificationClient notification.NotificationServiceClient) *TrackingService {
+func NewTrackingService(repo ports.LocationRepository, publisher messaging.Publisher, deliveryClient delivery.DeliveryServiceClient) *TrackingService {
 	return &TrackingService{
-		repo:              repo,
-		wsHub:             websocket.NewHub(),
-		deliveryClient:    deliveryClient,
-		notificationClient: notificationClient,
+		repo:           repo,
+		wsHub:          websocket.NewHub(),
+		publisher:      publisher,
+		deliveryClient: deliveryClient,
+		deliveryCB:     resilience.NewCircuitBreaker("delivery", 3, 10*time.Second),
 	}
 }
 
@@ -92,23 +96,32 @@ func (s *TrackingService) RecordLocation(ctx context.Context, req ports.RecordLo
 			req.DeliveryID, etaSeconds, distanceKm, averageSpeed)
 	}()
 
-	// Send location update notification asynchronously
+	// Send location update notification asynchronously via event publishing
 	go func() {
-		notificationReq := &notification.SendNotificationRequest{
-			RecipientId: fmt.Sprintf("%d", req.DeliveryID), // Using delivery ID as recipient for now
-			Type:        notification.NotificationType_NOTIFICATION_TYPE_LOCATION_UPDATE,
-			Channel:     notification.NotificationChannel_CHANNEL_IN_APP,
-			Subject:     "Location Update",
-			Message:     fmt.Sprintf("Courier location updated for delivery %d", req.DeliveryID),
-			Data: map[string]string{
+		eventID := uuid.New().String()
+		event := messaging.Event{
+			ID:        eventID,
+			Type:      "location.updated",
+			Source:    "tracking-service",
+			Timestamp: time.Now().Unix(),
+			Data: map[string]interface{}{
 				"delivery_id": fmt.Sprintf("%d", req.DeliveryID),
-				"latitude":    fmt.Sprintf("%f", location.Latitude),
-				"longitude":   fmt.Sprintf("%f", location.Longitude),
+				"courier_id":  fmt.Sprintf("%d", req.CourierID),
+				"latitude":    location.Latitude,
+				"longitude":   location.Longitude,
+				"accuracy":    location.Accuracy,
+				"speed":       location.Speed,
+				"heading":     location.Heading,
+				"altitude":    location.Altitude,
 			},
-			Priority: notification.NotificationPriority_NOTIFICATION_PRIORITY_LOW,
 		}
-		if _, err := s.notificationClient.SendNotification(context.Background(), notificationReq); err != nil {
-			fmt.Printf("Failed to send location update notification: %v\n", err)
+
+		// Publish event asynchronously with retry
+		err := resilience.Retry(ctx, resilience.DefaultRetryConfig(), func() error {
+			return s.publisher.Publish(ctx, "tracking-events", "location.updated", event)
+		})
+		if err != nil {
+			fmt.Printf("Failed to publish location update event: %v\n", err)
 		}
 	}()
 

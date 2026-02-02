@@ -16,13 +16,13 @@ import (
 	authPorts "github.com/Keneke-Einar/delivertrack/pkg/auth/ports"
 
 	"github.com/Keneke-Einar/delivertrack/pkg/config"
+	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/pkg/mongodb"
 	"github.com/Keneke-Einar/delivertrack/pkg/postgres"
 	"github.com/Keneke-Einar/delivertrack/pkg/websocket"
 
 	"github.com/Keneke-Einar/delivertrack/proto/tracking"
 	"github.com/Keneke-Einar/delivertrack/proto/delivery"
-	"github.com/Keneke-Einar/delivertrack/proto/notification"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -66,13 +66,6 @@ func main() {
 	defer deliveryConn.Close()
 	deliveryClient := delivery.NewDeliveryServiceClient(deliveryConn)
 
-	notificationConn, err := grpc.Dial(cfg.Services.Notification, grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("Failed to connect to notification service: %v", err)
-	}
-	defer notificationConn.Close()
-	notificationClient := notification.NewNotificationServiceClient(notificationConn)
-
 	log.Println("gRPC clients initialized")
 
 	// Auth layer
@@ -83,7 +76,16 @@ func main() {
 
 	// Tracking layer
 	trackingRepo := trackingAdapters.NewMongoDBLocationRepository(mongoClient)
-	trackingService := trackingApp.NewTrackingService(trackingRepo, deliveryClient, notificationClient)
+	
+	// Initialize RabbitMQ publisher for event publishing
+	rabbitMQURL := cfg.RabbitMQ.URL
+	publisher, err := messaging.NewRabbitMQPublisher(rabbitMQURL)
+	if err != nil {
+		log.Fatalf("Failed to create RabbitMQ publisher: %v", err)
+	}
+	defer publisher.Close()
+	
+	trackingService := trackingApp.NewTrackingService(trackingRepo, publisher, deliveryClient)
 	trackingHTTPHandler := trackingAdapters.NewHTTPHandler(trackingService)
 	trackingGRPCHandler := trackingAdapters.NewGRPCHandler(trackingService)
 

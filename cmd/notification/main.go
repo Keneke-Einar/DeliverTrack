@@ -16,6 +16,7 @@ import (
 	authPorts "github.com/Keneke-Einar/delivertrack/pkg/auth/ports"
 
 	"github.com/Keneke-Einar/delivertrack/pkg/config"
+	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/pkg/postgres"
 
 	"github.com/Keneke-Einar/delivertrack/proto/notification"
@@ -54,9 +55,24 @@ func main() {
 
 	// Notification layer
 	notificationRepo := notificationAdapters.NewPostgresNotificationRepository(db.DB)
-	notificationService := notificationApp.NewNotificationService(notificationRepo)
+	
+	// Initialize RabbitMQ consumer for event handling
+	rabbitMQURL := cfg.RabbitMQ.URL
+	consumer, err := messaging.NewRabbitMQConsumer(rabbitMQURL)
+	if err != nil {
+		log.Fatalf("Failed to create RabbitMQ consumer: %v", err)
+	}
+	defer consumer.Close()
+	
+	notificationService := notificationApp.NewNotificationService(notificationRepo, consumer)
 	notificationHTTPHandler := notificationAdapters.NewHTTPHandler(notificationService)
 	notificationGRPCHandler := notificationAdapters.NewGRPCHandler(notificationService)
+
+	// Start event consumption
+	if err := notificationService.StartEventConsumption(); err != nil {
+		log.Fatalf("Failed to start event consumption: %v", err)
+	}
+	log.Println("Started consuming delivery and location events")
 
 	// Setup HTTP router
 	mux := http.NewServeMux()

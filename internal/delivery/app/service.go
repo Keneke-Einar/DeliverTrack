@@ -7,23 +7,27 @@ import (
 
 	"github.com/Keneke-Einar/delivertrack/internal/delivery/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/delivery/ports"
-	"github.com/Keneke-Einar/delivertrack/proto/analytics"
-	"github.com/Keneke-Einar/delivertrack/proto/notification"
+	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
+	"github.com/Keneke-Einar/delivertrack/pkg/resilience"
+	"github.com/Keneke-Einar/delivertrack/proto/delivery"
+	"github.com/google/uuid"
 )
 
 // DeliveryService implements the delivery use cases
 type DeliveryService struct {
-	repo               ports.DeliveryRepository
-	notificationClient notification.NotificationServiceClient
-	analyticsClient    analytics.AnalyticsServiceClient
+	repo           ports.DeliveryRepository
+	publisher      messaging.Publisher
+	deliveryClient delivery.DeliveryServiceClient
+	deliveryCB     *resilience.CircuitBreaker
 }
 
 // NewDeliveryService creates a new delivery service
-func NewDeliveryService(repo ports.DeliveryRepository, notificationClient notification.NotificationServiceClient, analyticsClient analytics.AnalyticsServiceClient) *DeliveryService {
+func NewDeliveryService(repo ports.DeliveryRepository, publisher messaging.Publisher, deliveryClient delivery.DeliveryServiceClient) *DeliveryService {
 	return &DeliveryService{
-		repo:               repo,
-		notificationClient: notificationClient,
-		analyticsClient:    analyticsClient,
+		repo:           repo,
+		publisher:      publisher,
+		deliveryClient: deliveryClient,
+		deliveryCB:     resilience.NewCircuitBreaker("delivery", 3, 10*time.Second),
 	}
 }
 
@@ -52,24 +56,32 @@ func (s *DeliveryService) CreateDelivery(ctx context.Context, req ports.CreateDe
 		return nil, fmt.Errorf("failed to create delivery: %w", err)
 	}
 
-	// Record analytics event asynchronously
+	// Publish delivery created event
+	eventID := uuid.New().String()
+	event := messaging.Event{
+		ID:        eventID,
+		Type:      "delivery.created",
+		Source:    "delivery-service",
+		Timestamp: time.Now().Unix(),
+		Data: map[string]interface{}{
+			"delivery_id":       fmt.Sprintf("%d", delivery.ID),
+			"customer_id":       delivery.CustomerID,
+			"courier_id":        delivery.CourierID,
+			"pickup_location":   delivery.PickupLocation,
+			"delivery_location": delivery.DeliveryLocation,
+			"status":           delivery.Status,
+			"scheduled_date":   delivery.ScheduledDate,
+			"notes":            delivery.Notes,
+		},
+	}
+
+	// Publish event asynchronously with retry
 	go func() {
-		analyticsReq := &analytics.RecordEventRequest{
-			EventId:    fmt.Sprintf("delivery_created_%d_%d", delivery.ID, time.Now().Unix()),
-			EventType:  "delivery.created",
-			EntityType: "delivery",
-			EntityId:   fmt.Sprintf("%d", delivery.ID),
-			Properties: map[string]string{
-				"customer_id":       fmt.Sprintf("%d", delivery.CustomerID),
-				"courier_id":        fmt.Sprintf("%d", delivery.CourierID),
-				"pickup_location":   delivery.PickupLocation,
-				"delivery_location": delivery.DeliveryLocation,
-			},
-			Timestamp: time.Now().Unix(),
-		}
-		if _, err := s.analyticsClient.RecordEvent(context.Background(), analyticsReq); err != nil {
-			// Log error but don't fail the operation
-			fmt.Printf("Failed to record analytics event: %v\n", err)
+		err := resilience.Retry(ctx, resilience.DefaultRetryConfig(), func() error {
+			return s.publisher.Publish(ctx, "delivery-events", "delivery.created", event)
+		})
+		if err != nil {
+			fmt.Printf("Failed to publish delivery created event: %v\n", err)
 		}
 	}()
 
@@ -149,39 +161,31 @@ func (s *DeliveryService) UpdateDeliveryStatus(ctx context.Context, req ports.Up
 		return err
 	}
 
-	// Send notification asynchronously
-	go func() {
-		notificationReq := &notification.SendDeliveryUpdateRequest{
-			DeliveryId:     fmt.Sprintf("%d", req.ID),
-			CustomerId:     fmt.Sprintf("%d", delivery.CustomerID),
-			TrackingNumber: fmt.Sprintf("%d", req.ID), // Using ID as tracking number for now
-			Status:         req.Status,
-			Message:        fmt.Sprintf("Delivery status updated to %s", req.Status),
-		}
-		if _, err := s.notificationClient.SendDeliveryUpdate(context.Background(), notificationReq); err != nil {
-			// Log error but don't fail the operation
-			fmt.Printf("Failed to send delivery update notification: %v\n", err)
-		}
-	}()
+	// Publish delivery status changed event
+	eventID := uuid.New().String()
+	event := messaging.Event{
+		ID:        eventID,
+		Type:      "delivery.status_changed",
+		Source:    "delivery-service",
+		Timestamp: time.Now().Unix(),
+		Data: map[string]interface{}{
+			"delivery_id":     fmt.Sprintf("%d", req.ID),
+			"customer_id":     delivery.CustomerID,
+			"courier_id":      delivery.CourierID,
+			"old_status":      delivery.Status,
+			"new_status":      req.Status,
+			"notes":          req.Notes,
+			"updated_by_role": req.Role,
+		},
+	}
 
-	// Record analytics event asynchronously
+	// Publish event asynchronously with retry
 	go func() {
-		analyticsReq := &analytics.RecordEventRequest{
-			EventId:    fmt.Sprintf("delivery_status_update_%d_%d", req.ID, time.Now().Unix()),
-			EventType:  "delivery.status_changed",
-			EntityType: "delivery",
-			EntityId:   fmt.Sprintf("%d", req.ID),
-			Properties: map[string]string{
-				"old_status":  delivery.Status,
-				"new_status":  req.Status,
-				"customer_id": fmt.Sprintf("%d", delivery.CustomerID),
-				"courier_id":  fmt.Sprintf("%d", delivery.CourierID),
-			},
-			Timestamp: time.Now().Unix(),
-		}
-		if _, err := s.analyticsClient.RecordEvent(context.Background(), analyticsReq); err != nil {
-			// Log error but don't fail the operation
-			fmt.Printf("Failed to record analytics event: %v\n", err)
+		err := resilience.Retry(ctx, resilience.DefaultRetryConfig(), func() error {
+			return s.publisher.Publish(ctx, "delivery-events", "delivery.status_changed", event)
+		})
+		if err != nil {
+			fmt.Printf("Failed to publish delivery status changed event: %v\n", err)
 		}
 	}()
 

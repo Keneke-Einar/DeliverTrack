@@ -16,11 +16,10 @@ import (
 	authPorts "github.com/Keneke-Einar/delivertrack/pkg/auth/ports"
 
 	"github.com/Keneke-Einar/delivertrack/pkg/config"
+	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/pkg/postgres"
 
 	"github.com/Keneke-Einar/delivertrack/proto/delivery"
-	"github.com/Keneke-Einar/delivertrack/proto/notification"
-	"github.com/Keneke-Einar/delivertrack/proto/analytics"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -47,19 +46,12 @@ func main() {
 	log.Println("Database connection established")
 
 	// Initialize gRPC clients for inter-service communication
-	notificationConn, err := grpc.Dial(cfg.Services.Notification, grpc.WithInsecure())
+	deliveryConn, err := grpc.Dial(cfg.Services.Delivery, grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("Failed to connect to notification service: %v", err)
+		log.Fatalf("Failed to connect to delivery service: %v", err)
 	}
-	defer notificationConn.Close()
-	notificationClient := notification.NewNotificationServiceClient(notificationConn)
-
-	analyticsConn, err := grpc.Dial(cfg.Services.Analytics, grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("Failed to connect to analytics service: %v", err)
-	}
-	defer analyticsConn.Close()
-	analyticsClient := analytics.NewAnalyticsServiceClient(analyticsConn)
+	defer deliveryConn.Close()
+	deliveryClient := delivery.NewDeliveryServiceClient(deliveryConn)
 
 	log.Println("gRPC clients initialized")
 
@@ -71,7 +63,16 @@ func main() {
 
 	// Delivery layer
 	deliveryRepo := deliveryAdapters.NewPostgresDeliveryRepository(db.DB)
-	deliveryService := deliveryApp.NewDeliveryService(deliveryRepo, notificationClient, analyticsClient)
+	
+	// Initialize RabbitMQ publisher for event publishing
+	rabbitMQURL := cfg.RabbitMQ.URL
+	publisher, err := messaging.NewRabbitMQPublisher(rabbitMQURL)
+	if err != nil {
+		log.Fatalf("Failed to create RabbitMQ publisher: %v", err)
+	}
+	defer publisher.Close()
+	
+	deliveryService := deliveryApp.NewDeliveryService(deliveryRepo, publisher, deliveryClient)
 	deliveryHTTPHandler := deliveryAdapters.NewHTTPHandler(deliveryService)
 	deliveryGRPCHandler := deliveryAdapters.NewGRPCHandler(deliveryService)
 

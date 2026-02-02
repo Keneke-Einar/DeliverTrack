@@ -8,7 +8,9 @@ import (
 
 	"github.com/Keneke-Einar/delivertrack/internal/delivery/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/delivery/ports"
+	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/proto/analytics"
+	"github.com/Keneke-Einar/delivertrack/proto/delivery"
 	"github.com/Keneke-Einar/delivertrack/proto/notification"
 	"google.golang.org/grpc"
 )
@@ -108,6 +110,38 @@ func (m *MockDeliveryRepository) AddDelivery(delivery *domain.Delivery) {
 	}
 }
 
+// MockPublisher is a mock implementation of messaging.Publisher for testing
+type MockPublisher struct {
+	publishedEvents []messaging.Event
+	publishErr      error
+}
+
+func NewMockPublisher() *MockPublisher {
+	return &MockPublisher{
+		publishedEvents: make([]messaging.Event, 0),
+	}
+}
+
+func (m *MockPublisher) Publish(ctx context.Context, exchange, routingKey string, event messaging.Event) error {
+	if m.publishErr != nil {
+		return m.publishErr
+	}
+	m.publishedEvents = append(m.publishedEvents, event)
+	return nil
+}
+
+func (m *MockPublisher) Close() error {
+	return nil
+}
+
+func (m *MockPublisher) SetPublishError(err error) {
+	m.publishErr = err
+}
+
+func (m *MockPublisher) GetPublishedEvents() []messaging.Event {
+	return m.publishedEvents
+}
+
 // MockNotificationClient is a mock implementation of NotificationServiceClient for testing
 type MockNotificationClient struct{}
 
@@ -197,6 +231,45 @@ func (m *MockAnalyticsClient) GetDashboard(ctx context.Context, in *analytics.Ge
 
 func (m *MockAnalyticsClient) GetRouteEfficiency(ctx context.Context, in *analytics.GetRouteEfficiencyRequest, opts ...grpc.CallOption) (*analytics.GetRouteEfficiencyResponse, error) {
 	return &analytics.GetRouteEfficiencyResponse{}, nil
+}
+
+// MockDeliveryClient is a mock implementation of DeliveryServiceClient for testing
+type MockDeliveryClient struct{}
+
+func (m *MockDeliveryClient) CreateDelivery(ctx context.Context, in *delivery.CreateDeliveryRequest, opts ...grpc.CallOption) (*delivery.CreateDeliveryResponse, error) {
+	return &delivery.CreateDeliveryResponse{}, nil
+}
+
+func (m *MockDeliveryClient) GetDelivery(ctx context.Context, in *delivery.GetDeliveryRequest, opts ...grpc.CallOption) (*delivery.GetDeliveryResponse, error) {
+	return &delivery.GetDeliveryResponse{}, nil
+}
+
+func (m *MockDeliveryClient) UpdateDeliveryStatus(ctx context.Context, in *delivery.UpdateDeliveryStatusRequest, opts ...grpc.CallOption) (*delivery.UpdateDeliveryStatusResponse, error) {
+	return &delivery.UpdateDeliveryStatusResponse{}, nil
+}
+
+func (m *MockDeliveryClient) AssignDriver(ctx context.Context, in *delivery.AssignDriverRequest, opts ...grpc.CallOption) (*delivery.AssignDriverResponse, error) {
+	return &delivery.AssignDriverResponse{}, nil
+}
+
+func (m *MockDeliveryClient) ListDeliveries(ctx context.Context, in *delivery.ListDeliveriesRequest, opts ...grpc.CallOption) (*delivery.ListDeliveriesResponse, error) {
+	return &delivery.ListDeliveriesResponse{}, nil
+}
+
+func (m *MockDeliveryClient) CancelDelivery(ctx context.Context, in *delivery.CancelDeliveryRequest, opts ...grpc.CallOption) (*delivery.CancelDeliveryResponse, error) {
+	return &delivery.CancelDeliveryResponse{}, nil
+}
+
+func (m *MockDeliveryClient) GetDriverDeliveries(ctx context.Context, in *delivery.GetDriverDeliveriesRequest, opts ...grpc.CallOption) (*delivery.GetDriverDeliveriesResponse, error) {
+	return &delivery.GetDriverDeliveriesResponse{}, nil
+}
+
+func (m *MockDeliveryClient) OptimizeRoute(ctx context.Context, in *delivery.OptimizeRouteRequest, opts ...grpc.CallOption) (*delivery.OptimizeRouteResponse, error) {
+	return &delivery.OptimizeRouteResponse{}, nil
+}
+
+func (m *MockDeliveryClient) ConfirmDelivery(ctx context.Context, in *delivery.ConfirmDeliveryRequest, opts ...grpc.CallOption) (*delivery.ConfirmDeliveryResponse, error) {
+	return &delivery.ConfirmDeliveryResponse{}, nil
 }
 
 func TestDeliveryService_CreateDelivery(t *testing.T) {
@@ -298,9 +371,9 @@ func TestDeliveryService_CreateDelivery(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockRepo := NewMockDeliveryRepository()
 			mockRepo.SetCreateError(tt.mockCreateErr)
-			mockNotificationClient := &MockNotificationClient{}
-			mockAnalyticsClient := &MockAnalyticsClient{}
-			service := NewDeliveryService(mockRepo, mockNotificationClient, mockAnalyticsClient)
+			mockPublisher := NewMockPublisher()
+			mockDeliveryClient := &MockDeliveryClient{}
+			service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient)
 
 			delivery, err := service.CreateDelivery(context.Background(), ports.CreateDeliveryRequest{
 				CustomerID:       tt.customerID,
@@ -359,9 +432,9 @@ func TestDeliveryService_CreateDelivery(t *testing.T) {
 
 func TestDeliveryService_GetDelivery(t *testing.T) {
 	mockRepo := NewMockDeliveryRepository()
-	mockNotificationClient := &MockNotificationClient{}
-	mockAnalyticsClient := &MockAnalyticsClient{}
-	service := NewDeliveryService(mockRepo, mockNotificationClient, mockAnalyticsClient)
+	mockPublisher := NewMockPublisher()
+	mockDeliveryClient := &MockDeliveryClient{}
+	service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient)
 
 	// Create a test delivery
 	delivery := &domain.Delivery{
@@ -496,9 +569,9 @@ func TestDeliveryService_GetDelivery(t *testing.T) {
 
 func TestDeliveryService_ListDeliveries(t *testing.T) {
 	mockRepo := NewMockDeliveryRepository()
-	mockNotificationClient := &MockNotificationClient{}
-	mockAnalyticsClient := &MockAnalyticsClient{}
-	service := NewDeliveryService(mockRepo, mockNotificationClient, mockAnalyticsClient)
+	mockPublisher := NewMockPublisher()
+	mockDeliveryClient := &MockDeliveryClient{}
+	service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient)
 
 	// Create test deliveries
 	deliveries := []*domain.Delivery{
@@ -619,9 +692,9 @@ func TestDeliveryService_ListDeliveries(t *testing.T) {
 
 func TestDeliveryService_UpdateDeliveryStatus(t *testing.T) {
 	mockRepo := NewMockDeliveryRepository()
-	mockNotificationClient := &MockNotificationClient{}
-	mockAnalyticsClient := &MockAnalyticsClient{}
-	service := NewDeliveryService(mockRepo, mockNotificationClient, mockAnalyticsClient)
+	mockPublisher := NewMockPublisher()
+	mockDeliveryClient := &MockDeliveryClient{}
+	service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient)
 
 	// Create a test delivery
 	delivery := &domain.Delivery{

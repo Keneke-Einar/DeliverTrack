@@ -3,20 +3,24 @@ package app
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/Keneke-Einar/delivertrack/internal/notification/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/notification/ports"
+	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 )
 
 // NotificationService implements notification use cases
 type NotificationService struct {
-	repo ports.NotificationRepository
+	repo     ports.NotificationRepository
+	consumer messaging.Consumer
 }
 
 // NewNotificationService creates a new notification service
-func NewNotificationService(repo ports.NotificationRepository) *NotificationService {
+func NewNotificationService(repo ports.NotificationRepository, consumer messaging.Consumer) *NotificationService {
 	return &NotificationService{
-		repo: repo,
+		repo:     repo,
+		consumer: consumer,
 	}
 }
 
@@ -71,4 +75,106 @@ func (s *NotificationService) MarkAsRead(ctx context.Context, id int) error {
 
 	notification.MarkAsSent()
 	return s.repo.Update(ctx, notification)
+}
+
+// StartEventConsumption starts consuming delivery and location events
+func (s *NotificationService) StartEventConsumption() error {
+	return s.consumer.Consume("notification-events", s.handleEvent)
+}
+
+// handleEvent processes incoming events
+func (s *NotificationService) handleEvent(event messaging.Event) error {
+	ctx := context.Background()
+
+	switch event.Type {
+	case "delivery.created":
+		return s.handleDeliveryCreated(ctx, event)
+	case "delivery.status_changed":
+		return s.handleDeliveryStatusChanged(ctx, event)
+	case "location.updated":
+		return s.handleLocationUpdated(ctx, event)
+	default:
+		// Ignore unknown event types
+		return nil
+	}
+}
+
+// handleDeliveryCreated processes delivery creation events
+func (s *NotificationService) handleDeliveryCreated(ctx context.Context, event messaging.Event) error {
+	customerIDStr, ok := event.Data["customer_id"].(string)
+	if !ok {
+		return fmt.Errorf("invalid customer_id in event data")
+	}
+
+	customerID, err := strconv.Atoi(customerIDStr)
+	if err != nil {
+		return fmt.Errorf("failed to parse customer_id: %w", err)
+	}
+
+	deliveryIDStr, ok := event.Data["delivery_id"].(string)
+	if !ok {
+		return fmt.Errorf("invalid delivery_id in event data")
+	}
+
+	// Send notification to customer about delivery creation
+	_, err = s.SendNotification(
+		ctx,
+		customerID,
+		domain.NotificationTypeDeliveryUpdate,
+		"Delivery Created",
+		fmt.Sprintf("Your delivery %s has been created and is being processed.", deliveryIDStr),
+		fmt.Sprintf("customer_%d", customerID),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to send delivery created notification: %w", err)
+	}
+
+	return nil
+}
+
+// handleDeliveryStatusChanged processes delivery status change events
+func (s *NotificationService) handleDeliveryStatusChanged(ctx context.Context, event messaging.Event) error {
+	customerIDStr, ok := event.Data["customer_id"].(string)
+	if !ok {
+		return fmt.Errorf("invalid customer_id in event data")
+	}
+
+	customerID, err := strconv.Atoi(customerIDStr)
+	if err != nil {
+		return fmt.Errorf("failed to parse customer_id: %w", err)
+	}
+
+	deliveryIDStr, ok := event.Data["delivery_id"].(string)
+	if !ok {
+		return fmt.Errorf("invalid delivery_id in event data")
+	}
+
+	newStatus, ok := event.Data["new_status"].(string)
+	if !ok {
+		return fmt.Errorf("invalid new_status in event data")
+	}
+
+	// Send notification to customer about status change
+	_, err = s.SendNotification(
+		ctx,
+		customerID,
+		domain.NotificationTypeDeliveryUpdate,
+		"Delivery Status Update",
+		fmt.Sprintf("Your delivery %s status has been updated to: %s", deliveryIDStr, newStatus),
+		fmt.Sprintf("customer_%d", customerID),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to send delivery status notification: %w", err)
+	}
+
+	return nil
+}
+
+// handleLocationUpdated processes location update events
+func (s *NotificationService) handleLocationUpdated(ctx context.Context, event messaging.Event) error {
+	// For location updates, we could send notifications to customers
+	// For now, we'll skip this to avoid spam, but the infrastructure is in place
+	// TODO: Implement location-based notifications (e.g., "Courier is nearby")
+
+	return nil
 }

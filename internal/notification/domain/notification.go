@@ -14,9 +14,10 @@ var (
 type NotificationType string
 
 const (
-	NotificationTypeEmail NotificationType = "email"
-	NotificationTypeSMS   NotificationType = "sms"
-	NotificationTypePush  NotificationType = "push"
+	NotificationTypeEmail         NotificationType = "email"
+	NotificationTypeSMS           NotificationType = "sms"
+	NotificationTypePush          NotificationType = "push"
+	NotificationTypeDeliveryUpdate NotificationType = "delivery_update"
 )
 
 // NotificationStatus represents the status of a notification

@@ -7,6 +7,7 @@ import (
 
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/ports"
+	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/proto/common"
 	"github.com/Keneke-Einar/delivertrack/proto/delivery"
 	"github.com/Keneke-Einar/delivertrack/proto/notification"
@@ -95,6 +96,34 @@ func (m *MockLocationRepository) GetLatestByCourierID(ctx context.Context, couri
 	}
 
 	return latest, nil
+}
+
+// MockPublisher is a mock implementation of messaging.Publisher for testing
+type MockPublisher struct {
+	publishedEvents []messaging.Event
+	publishErr      error
+}
+
+func NewMockPublisher() *MockPublisher {
+	return &MockPublisher{
+		publishedEvents: make([]messaging.Event, 0),
+	}
+}
+
+func (m *MockPublisher) Publish(ctx context.Context, exchange, routingKey string, event messaging.Event) error {
+	if m.publishErr != nil {
+		return m.publishErr
+	}
+	m.publishedEvents = append(m.publishedEvents, event)
+	return nil
+}
+
+func (m *MockPublisher) Close() error {
+	return nil
+}
+
+func (m *MockPublisher) SetPublishError(err error) {
+	m.publishErr = err
 }
 
 // MockDeliveryClient is a mock implementation of DeliveryServiceClient for testing
@@ -212,9 +241,9 @@ func (m *MockNotificationClient) MarkAsRead(ctx context.Context, in *notificatio
 
 func TestTrackingService_RecordLocation(t *testing.T) {
 	repo := NewMockLocationRepository()
+	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
-	mockNotificationClient := &MockNotificationClient{}
-	service := NewTrackingService(repo, mockDeliveryClient, mockNotificationClient)
+	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient)
 
 	req := ports.RecordLocationRequest{
 		DeliveryID: 1,
@@ -271,9 +300,9 @@ func TestTrackingService_RecordLocation(t *testing.T) {
 
 func TestTrackingService_RecordLocation_InvalidData(t *testing.T) {
 	repo := NewMockLocationRepository()
+	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
-	mockNotificationClient := &MockNotificationClient{}
-	service := NewTrackingService(repo, mockDeliveryClient, mockNotificationClient)
+	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient)
 
 	req := ports.RecordLocationRequest{
 		DeliveryID: 0, // Invalid
@@ -290,9 +319,9 @@ func TestTrackingService_RecordLocation_InvalidData(t *testing.T) {
 
 func TestTrackingService_GetDeliveryTrack(t *testing.T) {
 	repo := NewMockLocationRepository()
+	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
-	mockNotificationClient := &MockNotificationClient{}
-	service := NewTrackingService(repo, mockDeliveryClient, mockNotificationClient)
+	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient)
 
 	// Add some test locations
 	ctx := context.Background()
@@ -336,9 +365,9 @@ func TestTrackingService_GetDeliveryTrack(t *testing.T) {
 
 func TestTrackingService_GetCurrentLocation(t *testing.T) {
 	repo := NewMockLocationRepository()
+	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
-	mockNotificationClient := &MockNotificationClient{}
-	service := NewTrackingService(repo, mockDeliveryClient, mockNotificationClient)
+	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient)
 
 	ctx := context.Background()
 
@@ -375,9 +404,9 @@ func TestTrackingService_GetCurrentLocation(t *testing.T) {
 
 func TestTrackingService_GetCourierLocation(t *testing.T) {
 	repo := NewMockLocationRepository()
+	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
-	mockNotificationClient := &MockNotificationClient{}
-	service := NewTrackingService(repo, mockDeliveryClient, mockNotificationClient)
+	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient)
 
 	ctx := context.Background()
 
@@ -417,9 +446,9 @@ func TestTrackingService_GetCourierLocation(t *testing.T) {
 
 func TestTrackingService_CalculateETAToDestination(t *testing.T) {
 	repo := NewMockLocationRepository()
+	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
-	mockNotificationClient := &MockNotificationClient{}
-	service := NewTrackingService(repo, mockDeliveryClient, mockNotificationClient)
+	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient)
 
 	ctx := context.Background()
 

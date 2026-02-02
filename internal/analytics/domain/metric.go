@@ -14,11 +14,13 @@ var (
 type MetricType string
 
 const (
-	MetricTypeDeliveryCreated   MetricType = "delivery_created"
-	MetricTypeDeliveryCompleted MetricType = "delivery_completed"
-	MetricTypeDeliveryCancelled MetricType = "delivery_cancelled"
-	MetricTypeUserRegistered    MetricType = "user_registered"
-	MetricTypeLoginAttempt      MetricType = "login_attempt"
+	MetricTypeDeliveryCreated       MetricType = "delivery_created"
+	MetricTypeDeliveryCompleted     MetricType = "delivery_completed"
+	MetricTypeDeliveryCancelled     MetricType = "delivery_cancelled"
+	MetricTypeDeliveryStatusChanged MetricType = "delivery_status_changed"
+	MetricTypeCustomerActivity      MetricType = "customer_activity"
+	MetricTypeUserRegistered        MetricType = "user_registered"
+	MetricTypeLoginAttempt          MetricType = "login_attempt"
 )
 
 // Metric represents an analytics metric
