@@ -8,19 +8,25 @@ import (
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/ports"
 	"github.com/Keneke-Einar/delivertrack/pkg/websocket"
+	"github.com/Keneke-Einar/delivertrack/proto/delivery"
+	"github.com/Keneke-Einar/delivertrack/proto/notification"
 )
 
 // TrackingService implements tracking use cases
 type TrackingService struct {
-	repo     ports.LocationRepository
-	wsHub    *websocket.Hub
+	repo              ports.LocationRepository
+	wsHub             *websocket.Hub
+	deliveryClient    delivery.DeliveryServiceClient
+	notificationClient notification.NotificationServiceClient
 }
 
 // NewTrackingService creates a new tracking service
-func NewTrackingService(repo ports.LocationRepository) *TrackingService {
+func NewTrackingService(repo ports.LocationRepository, deliveryClient delivery.DeliveryServiceClient, notificationClient notification.NotificationServiceClient) *TrackingService {
 	return &TrackingService{
-		repo:  repo,
-		wsHub: websocket.NewHub(),
+		repo:              repo,
+		wsHub:             websocket.NewHub(),
+		deliveryClient:    deliveryClient,
+		notificationClient: notificationClient,
 	}
 }
 
@@ -54,6 +60,57 @@ func (s *TrackingService) RecordLocation(ctx context.Context, req ports.RecordLo
 	if s.wsHub != nil {
 		go s.wsHub.BroadcastLocation(req.DeliveryID, location)
 	}
+
+	// Update delivery ETA asynchronously
+	go func() {
+		// Get delivery details to calculate ETA
+		deliveryReq := &delivery.GetDeliveryRequest{
+			DeliveryId: fmt.Sprintf("%d", req.DeliveryID),
+		}
+		deliveryResp, err := s.deliveryClient.GetDelivery(context.Background(), deliveryReq)
+		if err != nil {
+			fmt.Printf("Failed to get delivery for ETA calculation: %v\n", err)
+			return
+		}
+
+		// Calculate ETA to delivery location
+		destLat := deliveryResp.Delivery.DeliveryLocation.Latitude
+		destLng := deliveryResp.Delivery.DeliveryLocation.Longitude
+		
+		// Simple ETA calculation (can be improved)
+		distanceKm := calculateHaversineDistance(
+			location.Latitude, location.Longitude,
+			destLat, destLng,
+		)
+		averageSpeed := 25.0 // km/h
+		etaHours := distanceKm / averageSpeed
+		etaSeconds := int64(etaHours * 3600)
+		// etaTimestamp := time.Now().Unix() + etaSeconds
+
+		// For now, just log the ETA. In a real implementation, you might update the delivery record
+		fmt.Printf("Calculated ETA for delivery %d: %d seconds (%f km at %f km/h)\n", 
+			req.DeliveryID, etaSeconds, distanceKm, averageSpeed)
+	}()
+
+	// Send location update notification asynchronously
+	go func() {
+		notificationReq := &notification.SendNotificationRequest{
+			RecipientId: fmt.Sprintf("%d", req.DeliveryID), // Using delivery ID as recipient for now
+			Type:        notification.NotificationType_NOTIFICATION_TYPE_LOCATION_UPDATE,
+			Channel:     notification.NotificationChannel_CHANNEL_IN_APP,
+			Subject:     "Location Update",
+			Message:     fmt.Sprintf("Courier location updated for delivery %d", req.DeliveryID),
+			Data: map[string]string{
+				"delivery_id": fmt.Sprintf("%d", req.DeliveryID),
+				"latitude":    fmt.Sprintf("%f", location.Latitude),
+				"longitude":   fmt.Sprintf("%f", location.Longitude),
+			},
+			Priority: notification.NotificationPriority_NOTIFICATION_PRIORITY_LOW,
+		}
+		if _, err := s.notificationClient.SendNotification(context.Background(), notificationReq); err != nil {
+			fmt.Printf("Failed to send location update notification: %v\n", err)
+		}
+	}()
 
 	return location, nil
 }

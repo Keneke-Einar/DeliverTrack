@@ -12,19 +12,28 @@ import (
 
 // Config holds all configuration for the application
 type Config struct {
-	Service  ServiceConfig  `mapstructure:"service"`
-	Database DatabaseConfig `mapstructure:"database"`
-	MongoDB  MongoDBConfig  `mapstructure:"mongodb"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	RabbitMQ RabbitMQConfig `mapstructure:"rabbitmq"`
-	Auth     AuthConfig     `mapstructure:"auth"`
-	Vault    VaultConfig    `mapstructure:"vault"`
+	Service     ServiceConfig     `mapstructure:"service"`
+	Services    ServicesConfig    `mapstructure:"services"`
+	Database    DatabaseConfig    `mapstructure:"database"`
+	MongoDB     MongoDBConfig     `mapstructure:"mongodb"`
+	Redis       RedisConfig       `mapstructure:"redis"`
+	RabbitMQ    RabbitMQConfig    `mapstructure:"rabbitmq"`
+	Auth        AuthConfig        `mapstructure:"auth"`
+	Vault       VaultConfig       `mapstructure:"vault"`
 }
 
 // ServiceConfig holds service-specific configuration
 type ServiceConfig struct {
 	Port    string `mapstructure:"port"`
 	Version string `mapstructure:"version"`
+}
+
+// ServicesConfig holds URLs for other services
+type ServicesConfig struct {
+	Delivery     string `mapstructure:"delivery"`
+	Tracking     string `mapstructure:"tracking"`
+	Notification string `mapstructure:"notification"`
+	Analytics    string `mapstructure:"analytics"`
 }
 
 // DatabaseConfig holds PostgreSQL configuration
@@ -140,6 +149,10 @@ func setDefaults(serviceName string) {
 
 	viper.SetDefault("service.port", port)
 	viper.SetDefault("service.version", "dev")
+	viper.SetDefault("services.delivery", "localhost:50051")
+	viper.SetDefault("services.tracking", "localhost:50052")
+	viper.SetDefault("services.notification", "localhost:50053")
+	viper.SetDefault("services.analytics", "localhost:50054")
 	viper.SetDefault("database.url", "postgres://postgres:postgres@localhost:5432/delivertrack?sslmode=disable")
 	viper.SetDefault("mongodb.url", "mongodb://admin:admin123@localhost:27017/delivertrack?authSource=admin")
 	viper.SetDefault("redis.url", "localhost:6379")

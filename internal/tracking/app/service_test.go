@@ -7,6 +7,10 @@ import (
 
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/ports"
+	"github.com/Keneke-Einar/delivertrack/proto/common"
+	"github.com/Keneke-Einar/delivertrack/proto/delivery"
+	"github.com/Keneke-Einar/delivertrack/proto/notification"
+	"google.golang.org/grpc"
 )
 
 // MockLocationRepository is a mock implementation of LocationRepository for testing
@@ -93,9 +97,124 @@ func (m *MockLocationRepository) GetLatestByCourierID(ctx context.Context, couri
 	return latest, nil
 }
 
+// MockDeliveryClient is a mock implementation of DeliveryServiceClient for testing
+type MockDeliveryClient struct{}
+
+func (m *MockDeliveryClient) CreateDelivery(ctx context.Context, in *delivery.CreateDeliveryRequest, opts ...grpc.CallOption) (*delivery.CreateDeliveryResponse, error) {
+	return &delivery.CreateDeliveryResponse{
+		DeliveryId:    "mock-delivery-id",
+		TrackingNumber: "mock-tracking-number",
+		CreatedAt:     1234567890,
+	}, nil
+}
+
+func (m *MockDeliveryClient) GetDelivery(ctx context.Context, in *delivery.GetDeliveryRequest, opts ...grpc.CallOption) (*delivery.GetDeliveryResponse, error) {
+	return &delivery.GetDeliveryResponse{
+		Delivery: &delivery.Delivery{
+			DeliveryId:      "mock-delivery-id",
+			CustomerId:      "1",
+			DriverId:        "1",
+			TrackingNumber:  "mock-tracking-number",
+			PickupLocation:  &common.Location{Latitude: 40.7128, Longitude: -74.0060},
+			DeliveryLocation: &common.Location{Latitude: 40.7589, Longitude: -73.9851},
+			Status:          delivery.DeliveryStatus_DELIVERY_STATUS_IN_TRANSIT,
+			CreatedAt:       1234567890,
+			UpdatedAt:       1234567890,
+		},
+	}, nil
+}
+
+func (m *MockDeliveryClient) UpdateDeliveryStatus(ctx context.Context, in *delivery.UpdateDeliveryStatusRequest, opts ...grpc.CallOption) (*delivery.UpdateDeliveryStatusResponse, error) {
+	return &delivery.UpdateDeliveryStatusResponse{
+		Success:   true,
+		UpdatedAt: 1234567890,
+	}, nil
+}
+
+func (m *MockDeliveryClient) AssignDriver(ctx context.Context, in *delivery.AssignDriverRequest, opts ...grpc.CallOption) (*delivery.AssignDriverResponse, error) {
+	return &delivery.AssignDriverResponse{
+		Success:   true,
+		AssignedAt: 1234567890,
+	}, nil
+}
+
+func (m *MockDeliveryClient) ListDeliveries(ctx context.Context, in *delivery.ListDeliveriesRequest, opts ...grpc.CallOption) (*delivery.ListDeliveriesResponse, error) {
+	return &delivery.ListDeliveriesResponse{}, nil
+}
+
+func (m *MockDeliveryClient) CancelDelivery(ctx context.Context, in *delivery.CancelDeliveryRequest, opts ...grpc.CallOption) (*delivery.CancelDeliveryResponse, error) {
+	return &delivery.CancelDeliveryResponse{
+		Success:    true,
+		CancelledAt: 1234567890,
+	}, nil
+}
+
+func (m *MockDeliveryClient) GetDriverDeliveries(ctx context.Context, in *delivery.GetDriverDeliveriesRequest, opts ...grpc.CallOption) (*delivery.GetDriverDeliveriesResponse, error) {
+	return &delivery.GetDriverDeliveriesResponse{}, nil
+}
+
+func (m *MockDeliveryClient) OptimizeRoute(ctx context.Context, in *delivery.OptimizeRouteRequest, opts ...grpc.CallOption) (*delivery.OptimizeRouteResponse, error) {
+	return &delivery.OptimizeRouteResponse{}, nil
+}
+
+func (m *MockDeliveryClient) ConfirmDelivery(ctx context.Context, in *delivery.ConfirmDeliveryRequest, opts ...grpc.CallOption) (*delivery.ConfirmDeliveryResponse, error) {
+	return &delivery.ConfirmDeliveryResponse{
+		Success:     true,
+		ConfirmedAt: 1234567890,
+	}, nil
+}
+
+// MockNotificationClient is a mock implementation of NotificationServiceClient for testing
+type MockNotificationClient struct{}
+
+func (m *MockNotificationClient) SendNotification(ctx context.Context, in *notification.SendNotificationRequest, opts ...grpc.CallOption) (*notification.SendNotificationResponse, error) {
+	return &notification.SendNotificationResponse{
+		NotificationId: "mock-notification-id",
+		Status:         notification.NotificationStatus_NOTIFICATION_STATUS_SENT,
+		SentAt:         1234567890,
+	}, nil
+}
+
+func (m *MockNotificationClient) SendBulkNotifications(ctx context.Context, in *notification.SendBulkNotificationsRequest, opts ...grpc.CallOption) (*notification.SendBulkNotificationsResponse, error) {
+	return &notification.SendBulkNotificationsResponse{
+		SuccessCount: 1,
+		FailedCount:  0,
+	}, nil
+}
+
+func (m *MockNotificationClient) SendDeliveryUpdate(ctx context.Context, in *notification.SendDeliveryUpdateRequest, opts ...grpc.CallOption) (*notification.SendDeliveryUpdateResponse, error) {
+	return &notification.SendDeliveryUpdateResponse{
+		NotificationId: "mock-delivery-notification-id",
+		Success:        true,
+		SentAt:         1234567890,
+	}, nil
+}
+
+func (m *MockNotificationClient) GetNotificationHistory(ctx context.Context, in *notification.GetNotificationHistoryRequest, opts ...grpc.CallOption) (*notification.GetNotificationHistoryResponse, error) {
+	return &notification.GetNotificationHistoryResponse{}, nil
+}
+
+func (m *MockNotificationClient) UpdatePreferences(ctx context.Context, in *notification.UpdatePreferencesRequest, opts ...grpc.CallOption) (*notification.UpdatePreferencesResponse, error) {
+	return &notification.UpdatePreferencesResponse{Success: true}, nil
+}
+
+func (m *MockNotificationClient) GetPreferences(ctx context.Context, in *notification.GetPreferencesRequest, opts ...grpc.CallOption) (*notification.GetPreferencesResponse, error) {
+	return &notification.GetPreferencesResponse{}, nil
+}
+
+func (m *MockNotificationClient) Subscribe(ctx context.Context, in *notification.SubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[notification.Notification], error) {
+	return nil, nil
+}
+
+func (m *MockNotificationClient) MarkAsRead(ctx context.Context, in *notification.MarkAsReadRequest, opts ...grpc.CallOption) (*notification.MarkAsReadResponse, error) {
+	return &notification.MarkAsReadResponse{Success: true}, nil
+}
+
 func TestTrackingService_RecordLocation(t *testing.T) {
 	repo := NewMockLocationRepository()
-	service := NewTrackingService(repo)
+	mockDeliveryClient := &MockDeliveryClient{}
+	mockNotificationClient := &MockNotificationClient{}
+	service := NewTrackingService(repo, mockDeliveryClient, mockNotificationClient)
 
 	req := ports.RecordLocationRequest{
 		DeliveryID: 1,
@@ -152,7 +271,9 @@ func TestTrackingService_RecordLocation(t *testing.T) {
 
 func TestTrackingService_RecordLocation_InvalidData(t *testing.T) {
 	repo := NewMockLocationRepository()
-	service := NewTrackingService(repo)
+	mockDeliveryClient := &MockDeliveryClient{}
+	mockNotificationClient := &MockNotificationClient{}
+	service := NewTrackingService(repo, mockDeliveryClient, mockNotificationClient)
 
 	req := ports.RecordLocationRequest{
 		DeliveryID: 0, // Invalid
@@ -169,7 +290,9 @@ func TestTrackingService_RecordLocation_InvalidData(t *testing.T) {
 
 func TestTrackingService_GetDeliveryTrack(t *testing.T) {
 	repo := NewMockLocationRepository()
-	service := NewTrackingService(repo)
+	mockDeliveryClient := &MockDeliveryClient{}
+	mockNotificationClient := &MockNotificationClient{}
+	service := NewTrackingService(repo, mockDeliveryClient, mockNotificationClient)
 
 	// Add some test locations
 	ctx := context.Background()
@@ -213,7 +336,9 @@ func TestTrackingService_GetDeliveryTrack(t *testing.T) {
 
 func TestTrackingService_GetCurrentLocation(t *testing.T) {
 	repo := NewMockLocationRepository()
-	service := NewTrackingService(repo)
+	mockDeliveryClient := &MockDeliveryClient{}
+	mockNotificationClient := &MockNotificationClient{}
+	service := NewTrackingService(repo, mockDeliveryClient, mockNotificationClient)
 
 	ctx := context.Background()
 
@@ -250,7 +375,9 @@ func TestTrackingService_GetCurrentLocation(t *testing.T) {
 
 func TestTrackingService_GetCourierLocation(t *testing.T) {
 	repo := NewMockLocationRepository()
-	service := NewTrackingService(repo)
+	mockDeliveryClient := &MockDeliveryClient{}
+	mockNotificationClient := &MockNotificationClient{}
+	service := NewTrackingService(repo, mockDeliveryClient, mockNotificationClient)
 
 	ctx := context.Background()
 
@@ -290,7 +417,9 @@ func TestTrackingService_GetCourierLocation(t *testing.T) {
 
 func TestTrackingService_CalculateETAToDestination(t *testing.T) {
 	repo := NewMockLocationRepository()
-	service := NewTrackingService(repo)
+	mockDeliveryClient := &MockDeliveryClient{}
+	mockNotificationClient := &MockNotificationClient{}
+	service := NewTrackingService(repo, mockDeliveryClient, mockNotificationClient)
 
 	ctx := context.Background()
 

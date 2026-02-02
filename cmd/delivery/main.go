@@ -19,6 +19,8 @@ import (
 	"github.com/Keneke-Einar/delivertrack/pkg/postgres"
 
 	"github.com/Keneke-Einar/delivertrack/proto/delivery"
+	"github.com/Keneke-Einar/delivertrack/proto/notification"
+	"github.com/Keneke-Einar/delivertrack/proto/analytics"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -44,7 +46,22 @@ func main() {
 
 	log.Println("Database connection established")
 
-	// Wire up dependencies using layered architecture
+	// Initialize gRPC clients for inter-service communication
+	notificationConn, err := grpc.Dial(cfg.Services.Notification, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("Failed to connect to notification service: %v", err)
+	}
+	defer notificationConn.Close()
+	notificationClient := notification.NewNotificationServiceClient(notificationConn)
+
+	analyticsConn, err := grpc.Dial(cfg.Services.Analytics, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("Failed to connect to analytics service: %v", err)
+	}
+	defer analyticsConn.Close()
+	analyticsClient := analytics.NewAnalyticsServiceClient(analyticsConn)
+
+	log.Println("gRPC clients initialized")
 
 	// Auth layer
 	userRepo := authAdapters.NewPostgresUserRepository(db.DB)
@@ -54,7 +71,7 @@ func main() {
 
 	// Delivery layer
 	deliveryRepo := deliveryAdapters.NewPostgresDeliveryRepository(db.DB)
-	deliveryService := deliveryApp.NewDeliveryService(deliveryRepo)
+	deliveryService := deliveryApp.NewDeliveryService(deliveryRepo, notificationClient, analyticsClient)
 	deliveryHTTPHandler := deliveryAdapters.NewHTTPHandler(deliveryService)
 	deliveryGRPCHandler := deliveryAdapters.NewGRPCHandler(deliveryService)
 

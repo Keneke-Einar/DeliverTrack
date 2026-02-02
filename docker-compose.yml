@@ -8,9 +8,14 @@ services:
       dockerfile: docker/Dockerfile.delivery
     ports:
       - "8080:8080"
+      - "50051:50051"
     environment:
       - VAULT_ADDR=http://vault:8200
       - VAULT_TOKEN=root
+      - DELIVERY_SERVICES_DELIVERY=delivery:50051
+      - DELIVERY_SERVICES_TRACKING=tracking:50052
+      - DELIVERY_SERVICES_NOTIFICATION=notification:50053
+      - DELIVERY_SERVICES_ANALYTICS=analytics:50054
     depends_on:
       postgres:
         condition: service_healthy
@@ -33,9 +38,14 @@ services:
       dockerfile: docker/Dockerfile.tracking
     ports:
       - "8081:8081"
+      - "50052:50052"
     environment:
       - VAULT_ADDR=http://vault:8200
       - VAULT_TOKEN=root
+      - TRACKING_SERVICES_DELIVERY=delivery:50051
+      - TRACKING_SERVICES_TRACKING=tracking:50052
+      - TRACKING_SERVICES_NOTIFICATION=notification:50053
+      - TRACKING_SERVICES_ANALYTICS=analytics:50054
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,9 +68,14 @@ services:
       dockerfile: docker/Dockerfile.notification
     ports:
       - "8082:8082"
+      - "50053:50053"
     environment:
       - VAULT_ADDR=http://vault:8200
       - VAULT_TOKEN=root
+      - NOTIFICATION_SERVICES_DELIVERY=delivery:50051
+      - NOTIFICATION_SERVICES_TRACKING=tracking:50052
+      - NOTIFICATION_SERVICES_NOTIFICATION=notification:50053
+      - NOTIFICATION_SERVICES_ANALYTICS=analytics:50054
     depends_on:
       postgres:
         condition: service_healthy
@@ -83,9 +98,14 @@ services:
       dockerfile: docker/Dockerfile.analytics
     ports:
       - "8083:8083"
+      - "50054:50054"
     environment:
       - VAULT_ADDR=http://vault:8200
       - VAULT_TOKEN=root
+      - ANALYTICS_SERVICES_DELIVERY=delivery:50051
+      - ANALYTICS_SERVICES_TRACKING=tracking:50052
+      - ANALYTICS_SERVICES_NOTIFICATION=notification:50053
+      - ANALYTICS_SERVICES_ANALYTICS=analytics:50054
     depends_on:
       postgres:
         condition: service_healthy

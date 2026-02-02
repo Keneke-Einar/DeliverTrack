@@ -7,17 +7,23 @@ import (
 
 	"github.com/Keneke-Einar/delivertrack/internal/delivery/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/delivery/ports"
+	"github.com/Keneke-Einar/delivertrack/proto/analytics"
+	"github.com/Keneke-Einar/delivertrack/proto/notification"
 )
 
 // DeliveryService implements the delivery use cases
 type DeliveryService struct {
-	repo ports.DeliveryRepository
+	repo               ports.DeliveryRepository
+	notificationClient notification.NotificationServiceClient
+	analyticsClient    analytics.AnalyticsServiceClient
 }
 
 // NewDeliveryService creates a new delivery service
-func NewDeliveryService(repo ports.DeliveryRepository) *DeliveryService {
+func NewDeliveryService(repo ports.DeliveryRepository, notificationClient notification.NotificationServiceClient, analyticsClient analytics.AnalyticsServiceClient) *DeliveryService {
 	return &DeliveryService{
-		repo: repo,
+		repo:               repo,
+		notificationClient: notificationClient,
+		analyticsClient:    analyticsClient,
 	}
 }
 
@@ -45,6 +51,27 @@ func (s *DeliveryService) CreateDelivery(ctx context.Context, req ports.CreateDe
 	if err := s.repo.Create(ctx, delivery); err != nil {
 		return nil, fmt.Errorf("failed to create delivery: %w", err)
 	}
+
+	// Record analytics event asynchronously
+	go func() {
+		analyticsReq := &analytics.RecordEventRequest{
+			EventId:    fmt.Sprintf("delivery_created_%d_%d", delivery.ID, time.Now().Unix()),
+			EventType:  "delivery.created",
+			EntityType: "delivery",
+			EntityId:   fmt.Sprintf("%d", delivery.ID),
+			Properties: map[string]string{
+				"customer_id":       fmt.Sprintf("%d", delivery.CustomerID),
+				"courier_id":        fmt.Sprintf("%d", delivery.CourierID),
+				"pickup_location":   delivery.PickupLocation,
+				"delivery_location": delivery.DeliveryLocation,
+			},
+			Timestamp: time.Now().Unix(),
+		}
+		if _, err := s.analyticsClient.RecordEvent(context.Background(), analyticsReq); err != nil {
+			// Log error but don't fail the operation
+			fmt.Printf("Failed to record analytics event: %v\n", err)
+		}
+	}()
 
 	return delivery, nil
 }
@@ -118,5 +145,45 @@ func (s *DeliveryService) UpdateDeliveryStatus(ctx context.Context, req ports.Up
 	}
 
 	// Persist the update
-	return s.repo.UpdateStatus(ctx, req.ID, req.Status, req.Notes)
+	if err := s.repo.UpdateStatus(ctx, req.ID, req.Status, req.Notes); err != nil {
+		return err
+	}
+
+	// Send notification asynchronously
+	go func() {
+		notificationReq := &notification.SendDeliveryUpdateRequest{
+			DeliveryId:     fmt.Sprintf("%d", req.ID),
+			CustomerId:     fmt.Sprintf("%d", delivery.CustomerID),
+			TrackingNumber: fmt.Sprintf("%d", req.ID), // Using ID as tracking number for now
+			Status:         req.Status,
+			Message:        fmt.Sprintf("Delivery status updated to %s", req.Status),
+		}
+		if _, err := s.notificationClient.SendDeliveryUpdate(context.Background(), notificationReq); err != nil {
+			// Log error but don't fail the operation
+			fmt.Printf("Failed to send delivery update notification: %v\n", err)
+		}
+	}()
+
+	// Record analytics event asynchronously
+	go func() {
+		analyticsReq := &analytics.RecordEventRequest{
+			EventId:    fmt.Sprintf("delivery_status_update_%d_%d", req.ID, time.Now().Unix()),
+			EventType:  "delivery.status_changed",
+			EntityType: "delivery",
+			EntityId:   fmt.Sprintf("%d", req.ID),
+			Properties: map[string]string{
+				"old_status":  delivery.Status,
+				"new_status":  req.Status,
+				"customer_id": fmt.Sprintf("%d", delivery.CustomerID),
+				"courier_id":  fmt.Sprintf("%d", delivery.CourierID),
+			},
+			Timestamp: time.Now().Unix(),
+		}
+		if _, err := s.analyticsClient.RecordEvent(context.Background(), analyticsReq); err != nil {
+			// Log error but don't fail the operation
+			fmt.Printf("Failed to record analytics event: %v\n", err)
+		}
+	}()
+
+	return nil
 }

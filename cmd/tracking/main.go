@@ -21,6 +21,8 @@ import (
 	"github.com/Keneke-Einar/delivertrack/pkg/websocket"
 
 	"github.com/Keneke-Einar/delivertrack/proto/tracking"
+	"github.com/Keneke-Einar/delivertrack/proto/delivery"
+	"github.com/Keneke-Einar/delivertrack/proto/notification"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -56,7 +58,22 @@ func main() {
 
 	log.Println("MongoDB connection established")
 
-	// Wire up dependencies using layered architecture
+	// Initialize gRPC clients for inter-service communication
+	deliveryConn, err := grpc.Dial(cfg.Services.Delivery, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("Failed to connect to delivery service: %v", err)
+	}
+	defer deliveryConn.Close()
+	deliveryClient := delivery.NewDeliveryServiceClient(deliveryConn)
+
+	notificationConn, err := grpc.Dial(cfg.Services.Notification, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("Failed to connect to notification service: %v", err)
+	}
+	defer notificationConn.Close()
+	notificationClient := notification.NewNotificationServiceClient(notificationConn)
+
+	log.Println("gRPC clients initialized")
 
 	// Auth layer
 	userRepo := authAdapters.NewPostgresUserRepository(db.DB)
@@ -66,7 +83,7 @@ func main() {
 
 	// Tracking layer
 	trackingRepo := trackingAdapters.NewMongoDBLocationRepository(mongoClient)
-	trackingService := trackingApp.NewTrackingService(trackingRepo)
+	trackingService := trackingApp.NewTrackingService(trackingRepo, deliveryClient, notificationClient)
 	trackingHTTPHandler := trackingAdapters.NewHTTPHandler(trackingService)
 	trackingGRPCHandler := trackingAdapters.NewGRPCHandler(trackingService)
 

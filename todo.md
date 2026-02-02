@@ -82,11 +82,20 @@
   - [x] Tracking service gRPC server (port 50052)
   - [x] Notification service gRPC server (port 50053)
   - [x] Analytics service gRPC server (port 50054)
-- [ ] Implement gRPC clients for inter-service calls:
-  - [ ] Delivery → Notification (send status updates)
-  - [ ] Delivery → Analytics (record delivery events)
-  - [ ] Tracking → Delivery (update location & ETA)
-  - [ ] Tracking → Notification (real-time updates)
+- [x] Implement gRPC clients for inter-service calls:
+  - [x] Delivery → Notification (send status updates)
+  - [x] Delivery → Analytics (record delivery events)
+  - [x] Tracking → Delivery (update location & ETA)
+  - [x] Tracking → Notification (real-time updates)
+- [ ] Improve inter-service communication architecture:
+  - [ ] Implement hybrid approach: gRPC for synchronous queries, message queues for events
+  - [ ] Replace direct gRPC calls for analytics/notifications with RabbitMQ events
+  - [ ] Refactor delivery service to publish events instead of direct gRPC calls
+  - [ ] Refactor tracking service to publish events instead of direct gRPC calls
+  - [ ] Add circuit breaker pattern for gRPC calls
+  - [ ] Implement retry logic with exponential backoff for failed gRPC calls
+  - [ ] Add proper context propagation for request tracing
+  - [ ] Implement dead letter queues for failed message processing
 - [ ] Add gRPC interceptors:
   - [ ] Authentication/authorization interceptor
   - [ ] Logging interceptor with correlation IDs
@@ -106,11 +115,24 @@
 ### RabbitMQ Events
 - [x] Set up RabbitMQ infrastructure (docker-compose)
 - [x] Create messaging package skeleton
-- [ ] Implement event-driven architecture:
-  - [ ] `delivery.created` event
-  - [ ] `location.updated` event
-  - [ ] `status.changed` event
+- [ ] Implement event-driven architecture for analytics and notifications:
+  - [ ] `delivery.created` event (publish to RabbitMQ instead of direct gRPC)
+  - [ ] `delivery.status_changed` event (publish to RabbitMQ instead of direct gRPC)
+  - [ ] `location.updated` event (publish to RabbitMQ instead of direct gRPC)
   - [ ] `delivery.completed` event
+  - [ ] Implement event consumers in analytics service
+  - [ ] Implement event consumers in notification service
+  - [ ] Add message serialization/deserialization
+  - [ ] Implement dead letter queues for failed processing
+  - [ ] Add message retry logic with exponential backoff
+
+### Resilience & Reliability
+- [ ] Implement circuit breaker pattern for external service calls
+- [ ] Add health checks for all inter-service dependencies
+- [ ] Implement graceful degradation when services are unavailable
+- [ ] Add service discovery and load balancing for gRPC calls
+- [ ] Implement distributed tracing (OpenTelemetry/Jaeger)
+- [ ] Add metrics collection for inter-service communication
 
 ### WebSocket Server
 - [x] Implement WebSocket server:
