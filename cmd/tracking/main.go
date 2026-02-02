@@ -25,6 +25,8 @@ import (
 	"github.com/Keneke-Einar/delivertrack/proto/delivery"
 	"github.com/Keneke-Einar/delivertrack/proto/tracking"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -189,6 +191,12 @@ func main() {
 		),
 	)
 	tracking.RegisterTrackingServiceServer(grpcServer, trackingGRPCHandler)
+
+	// Register health service
+	healthServer := health.NewServer()
+	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
+	healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
+
 	reflection.Register(grpcServer) // Enable reflection for debugging
 
 	log.Printf("Tracking gRPC service v%s starting on port %s", version, grpcPort)
