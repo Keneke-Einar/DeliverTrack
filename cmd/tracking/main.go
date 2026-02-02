@@ -16,13 +16,14 @@ import (
 	authPorts "github.com/Keneke-Einar/delivertrack/pkg/auth/ports"
 
 	"github.com/Keneke-Einar/delivertrack/pkg/config"
+	"github.com/Keneke-Einar/delivertrack/pkg/grpcinterceptors"
 	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/pkg/mongodb"
 	"github.com/Keneke-Einar/delivertrack/pkg/postgres"
 	"github.com/Keneke-Einar/delivertrack/pkg/websocket"
 
-	"github.com/Keneke-Einar/delivertrack/proto/tracking"
 	"github.com/Keneke-Einar/delivertrack/proto/delivery"
+	"github.com/Keneke-Einar/delivertrack/proto/tracking"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -59,7 +60,11 @@ func main() {
 	log.Println("MongoDB connection established")
 
 	// Initialize gRPC clients for inter-service communication
-	deliveryConn, err := grpc.Dial(cfg.Services.Delivery, grpc.WithInsecure())
+	deliveryConn, err := grpc.NewClient(cfg.Services.Delivery,
+		grpc.WithInsecure(),
+		grpc.WithUnaryInterceptor(grpcinterceptors.UnaryClientInterceptor()),
+		grpc.WithStreamInterceptor(grpcinterceptors.StreamClientInterceptor()),
+	)
 	if err != nil {
 		log.Fatalf("Failed to connect to delivery service: %v", err)
 	}
@@ -76,7 +81,7 @@ func main() {
 
 	// Tracking layer
 	trackingRepo := trackingAdapters.NewMongoDBLocationRepository(mongoClient)
-	
+
 	// Initialize RabbitMQ publisher for event publishing
 	rabbitMQURL := cfg.RabbitMQ.URL
 	publisher, err := messaging.NewRabbitMQPublisher(rabbitMQURL)
@@ -84,7 +89,7 @@ func main() {
 		log.Fatalf("Failed to create RabbitMQ publisher: %v", err)
 	}
 	defer publisher.Close()
-	
+
 	trackingService := trackingApp.NewTrackingService(trackingRepo, publisher, deliveryClient)
 	trackingHTTPHandler := trackingAdapters.NewHTTPHandler(trackingService)
 	trackingGRPCHandler := trackingAdapters.NewGRPCHandler(trackingService)
@@ -169,7 +174,10 @@ func main() {
 		log.Fatalf("Failed to listen on gRPC port %s: %v", grpcPort, err)
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(grpcinterceptors.UnaryServerInterceptor()),
+		grpc.StreamInterceptor(grpcinterceptors.StreamServerInterceptor()),
+	)
 	tracking.RegisterTrackingServiceServer(grpcServer, trackingGRPCHandler)
 	reflection.Register(grpcServer) // Enable reflection for debugging
 

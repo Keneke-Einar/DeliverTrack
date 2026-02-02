@@ -87,25 +87,29 @@ func (cb *CircuitBreaker) onFailure() {
 	cb.failures++
 	cb.lastFailureTime = time.Now()
 
-	if cb.state == StateHalfOpen {
+	switch cb.state {
+	case StateHalfOpen:
 		// If we fail in half-open state, go back to open
 		cb.state = StateOpen
-	} else if cb.failures >= cb.failureThreshold {
+	default:
 		// If we reach failure threshold, open the circuit
-		cb.state = StateOpen
+		if cb.failures >= cb.failureThreshold {
+			cb.state = StateOpen
+		}
 	}
 }
 
 // onSuccess handles success scenarios
 func (cb *CircuitBreaker) onSuccess() {
-	if cb.state == StateHalfOpen {
+	switch cb.state {
+	case StateHalfOpen:
 		cb.halfOpenSuccesses++
 		// If we have enough successes in half-open state, close the circuit
 		if cb.halfOpenSuccesses >= cb.halfOpenMaxCalls {
 			cb.state = StateClosed
 			cb.failures = 0
 		}
-	} else if cb.state == StateClosed {
+	case StateClosed:
 		// Reset failure count on success
 		cb.failures = 0
 	}

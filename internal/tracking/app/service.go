@@ -11,7 +11,6 @@ import (
 	"github.com/Keneke-Einar/delivertrack/pkg/resilience"
 	"github.com/Keneke-Einar/delivertrack/pkg/websocket"
 	"github.com/Keneke-Einar/delivertrack/proto/delivery"
-	"github.com/google/uuid"
 )
 
 // TrackingService implements tracking use cases
@@ -98,23 +97,17 @@ func (s *TrackingService) RecordLocation(ctx context.Context, req ports.RecordLo
 
 	// Send location update notification asynchronously via event publishing
 	go func() {
-		eventID := uuid.New().String()
-		event := messaging.Event{
-			ID:        eventID,
-			Type:      "location.updated",
-			Source:    "tracking-service",
-			Timestamp: time.Now().Unix(),
-			Data: map[string]interface{}{
-				"delivery_id": fmt.Sprintf("%d", req.DeliveryID),
-				"courier_id":  fmt.Sprintf("%d", req.CourierID),
-				"latitude":    location.Latitude,
-				"longitude":   location.Longitude,
-				"accuracy":    location.Accuracy,
-				"speed":       location.Speed,
-				"heading":     location.Heading,
-				"altitude":    location.Altitude,
-			},
-		}
+		traceCtx := messaging.ExtractTraceContextFromContext(ctx, "tracking-service", "record_location")
+		event := messaging.NewEventWithTrace("location.updated", "tracking-service", "record_location", map[string]interface{}{
+			"delivery_id": fmt.Sprintf("%d", req.DeliveryID),
+			"courier_id":  fmt.Sprintf("%d", req.CourierID),
+			"latitude":    location.Latitude,
+			"longitude":   location.Longitude,
+			"accuracy":    location.Accuracy,
+			"speed":       location.Speed,
+			"heading":     location.Heading,
+			"altitude":    location.Altitude,
+		}, traceCtx)
 
 		// Publish event asynchronously with retry
 		err := resilience.Retry(ctx, resilience.DefaultRetryConfig(), func() error {

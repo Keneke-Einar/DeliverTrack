@@ -2,11 +2,14 @@ package adapters
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Keneke-Einar/delivertrack/internal/delivery/ports"
+	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 )
 
 // HTTPHandler handles HTTP requests for delivery operations
@@ -62,8 +65,16 @@ func (h *HTTPHandler) CreateDelivery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Create trace context for request tracing
+	ctx := messaging.ContextWithTraceContext(r.Context(), &messaging.TraceContext{
+		TraceID:    generateTraceID(),
+		SpanID:     generateSpanID(),
+		ServiceName: "delivery-service",
+		Operation:  "create_delivery_http",
+	})
+
 	// Create delivery
-	delivery, err := h.service.CreateDelivery(r.Context(), req)
+	delivery, err := h.service.CreateDelivery(ctx, req)
 	if err != nil {
 		sendErrorResponse(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -232,4 +243,13 @@ func sendErrorResponse(w http.ResponseWriter, message string, statusCode int) {
 		Error:   http.StatusText(statusCode),
 		Message: message,
 	})
+}
+
+// Helper functions for trace ID generation
+func generateTraceID() string {
+	return fmt.Sprintf("%d", time.Now().UnixNano())
+}
+
+func generateSpanID() string {
+	return fmt.Sprintf("%d", time.Now().UnixNano())
 }

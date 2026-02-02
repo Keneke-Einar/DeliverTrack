@@ -10,7 +10,6 @@ import (
 	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/pkg/resilience"
 	"github.com/Keneke-Einar/delivertrack/proto/delivery"
-	"github.com/google/uuid"
 )
 
 // DeliveryService implements the delivery use cases
@@ -57,23 +56,17 @@ func (s *DeliveryService) CreateDelivery(ctx context.Context, req ports.CreateDe
 	}
 
 	// Publish delivery created event
-	eventID := uuid.New().String()
-	event := messaging.Event{
-		ID:        eventID,
-		Type:      "delivery.created",
-		Source:    "delivery-service",
-		Timestamp: time.Now().Unix(),
-		Data: map[string]interface{}{
-			"delivery_id":       fmt.Sprintf("%d", delivery.ID),
-			"customer_id":       delivery.CustomerID,
-			"courier_id":        delivery.CourierID,
-			"pickup_location":   delivery.PickupLocation,
-			"delivery_location": delivery.DeliveryLocation,
-			"status":           delivery.Status,
-			"scheduled_date":   delivery.ScheduledDate,
-			"notes":            delivery.Notes,
-		},
-	}
+	traceCtx := messaging.ExtractTraceContextFromContext(ctx, "delivery-service", "create_delivery")
+	event := messaging.NewEventWithTrace("delivery.created", "delivery-service", "create_delivery", map[string]interface{}{
+		"delivery_id":       fmt.Sprintf("%d", delivery.ID),
+		"customer_id":       delivery.CustomerID,
+		"courier_id":        delivery.CourierID,
+		"pickup_location":   delivery.PickupLocation,
+		"delivery_location": delivery.DeliveryLocation,
+		"status":           delivery.Status,
+		"scheduled_date":   delivery.ScheduledDate,
+		"notes":            delivery.Notes,
+	}, traceCtx)
 
 	// Publish event asynchronously with retry
 	go func() {
@@ -162,22 +155,16 @@ func (s *DeliveryService) UpdateDeliveryStatus(ctx context.Context, req ports.Up
 	}
 
 	// Publish delivery status changed event
-	eventID := uuid.New().String()
-	event := messaging.Event{
-		ID:        eventID,
-		Type:      "delivery.status_changed",
-		Source:    "delivery-service",
-		Timestamp: time.Now().Unix(),
-		Data: map[string]interface{}{
-			"delivery_id":     fmt.Sprintf("%d", req.ID),
-			"customer_id":     delivery.CustomerID,
-			"courier_id":      delivery.CourierID,
-			"old_status":      delivery.Status,
-			"new_status":      req.Status,
-			"notes":          req.Notes,
-			"updated_by_role": req.Role,
-		},
-	}
+	traceCtx := messaging.ExtractTraceContextFromContext(ctx, "delivery-service", "update_delivery_status")
+	event := messaging.NewEventWithTrace("delivery.status_changed", "delivery-service", "update_delivery_status", map[string]interface{}{
+		"delivery_id":     fmt.Sprintf("%d", req.ID),
+		"customer_id":     delivery.CustomerID,
+		"courier_id":      delivery.CourierID,
+		"old_status":      delivery.Status,
+		"new_status":      req.Status,
+		"notes":          req.Notes,
+		"updated_by_role": req.Role,
+	}, traceCtx)
 
 	// Publish event asynchronously with retry
 	go func() {

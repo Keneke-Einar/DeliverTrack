@@ -94,7 +94,7 @@
   - [x] Refactor tracking service to publish events instead of direct gRPC calls
   - [x] Add circuit breaker pattern for gRPC calls
   - [x] Implement retry logic with exponential backoff for failed gRPC calls
-  - [ ] Add proper context propagation for request tracing
+  - [x] Add proper context propagation for request tracing
   - [x] Implement dead letter queues for failed message processing
 - [ ] Add gRPC interceptors:
   - [ ] Authentication/authorization interceptor
@@ -132,6 +132,11 @@
 - [ ] Implement graceful degradation when services are unavailable
 - [ ] Add service discovery and load balancing for gRPC calls
 - [ ] Implement distributed tracing (OpenTelemetry/Jaeger)
+  - [x] Add trace context to events (TraceID, SpanID, ParentSpanID)
+  - [x] Implement gRPC interceptors for context propagation
+  - [x] Add trace context extraction and injection in HTTP handlers
+  - [ ] Integrate with OpenTelemetry framework
+  - [ ] Set up Jaeger or similar tracing backend
 - [x] Add metrics collection for inter-service communication
 
 ### WebSocket Server

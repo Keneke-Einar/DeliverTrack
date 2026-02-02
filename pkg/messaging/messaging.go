@@ -17,6 +17,108 @@ type Event struct {
 	Source    string                 `json:"source"`
 	Timestamp int64                  `json:"timestamp"`
 	Data      map[string]interface{} `json:"data"`
+	// Tracing context for distributed tracing
+	TraceContext *TraceContext `json:"trace_context,omitempty"`
+}
+
+// TraceContext holds distributed tracing information
+type TraceContext struct {
+	TraceID      string `json:"trace_id"`
+	SpanID       string `json:"span_id"`
+	ParentSpanID string `json:"parent_span_id,omitempty"`
+	ServiceName  string `json:"service_name"`
+	Operation    string `json:"operation"`
+}
+
+// NewEventWithTrace creates a new event with tracing context
+func NewEventWithTrace(eventType, source, operation string, data map[string]interface{}, traceCtx *TraceContext) Event {
+	eventID := generateEventID()
+	
+	event := Event{
+		ID:        eventID,
+		Type:      eventType,
+		Source:    source,
+		Timestamp: time.Now().Unix(),
+		Data:      data,
+	}
+	
+	if traceCtx != nil {
+		event.TraceContext = traceCtx
+	}
+	
+	return event
+}
+
+// ExtractTraceContextFromContext extracts trace context from Go context
+func ExtractTraceContextFromContext(ctx context.Context, serviceName, operation string) *TraceContext {
+	// Check for trace context in context (you would implement this based on your tracing framework)
+	traceID := getTraceIDFromContext(ctx)
+	spanID := getSpanIDFromContext(ctx)
+	parentSpanID := getParentSpanIDFromContext(ctx)
+	
+	if traceID == "" {
+		// Generate new trace if none exists
+		traceID = generateTraceID()
+		spanID = generateSpanID()
+	}
+	
+	return &TraceContext{
+		TraceID:      traceID,
+		SpanID:       spanID,
+		ParentSpanID: parentSpanID,
+		ServiceName:  serviceName,
+		Operation:    operation,
+	}
+}
+
+// ContextWithTraceContext adds trace context to Go context
+func ContextWithTraceContext(ctx context.Context, traceCtx *TraceContext) context.Context {
+	if traceCtx == nil {
+		return ctx
+	}
+	
+	// Add trace context to context (implement based on your tracing framework)
+	ctx = context.WithValue(ctx, "trace_id", traceCtx.TraceID)
+	ctx = context.WithValue(ctx, "span_id", traceCtx.SpanID)
+	if traceCtx.ParentSpanID != "" {
+		ctx = context.WithValue(ctx, "parent_span_id", traceCtx.ParentSpanID)
+	}
+	
+	return ctx
+}
+
+// Helper functions (implement based on your tracing framework)
+func getTraceIDFromContext(ctx context.Context) string {
+	if val := ctx.Value("trace_id"); val != nil {
+		return val.(string)
+	}
+	return ""
+}
+
+func getSpanIDFromContext(ctx context.Context) string {
+	if val := ctx.Value("span_id"); val != nil {
+		return val.(string)
+	}
+	return ""
+}
+
+func getParentSpanIDFromContext(ctx context.Context) string {
+	if val := ctx.Value("parent_span_id"); val != nil {
+		return val.(string)
+	}
+	return ""
+}
+
+func generateTraceID() string {
+	return fmt.Sprintf("%d", time.Now().UnixNano())
+}
+
+func generateSpanID() string {
+	return fmt.Sprintf("%d", time.Now().UnixNano())
+}
+
+func generateEventID() string {
+	return fmt.Sprintf("evt_%d", time.Now().UnixNano())
 }
 
 // Publisher interface for publishing events
