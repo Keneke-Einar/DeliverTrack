@@ -16,6 +16,7 @@ import (
 	authPorts "github.com/Keneke-Einar/delivertrack/pkg/auth/ports"
 
 	"github.com/Keneke-Einar/delivertrack/pkg/config"
+	"github.com/Keneke-Einar/delivertrack/pkg/grpcinterceptors"
 	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/pkg/postgres"
 
@@ -105,7 +106,20 @@ func main() {
 		log.Fatalf("Failed to listen on gRPC port %s: %v", grpcPort, err)
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			grpcinterceptors.ErrorHandlingUnaryServerInterceptor(),
+			grpcinterceptors.LoggingUnaryServerInterceptor(),
+			grpcinterceptors.AuthUnaryServerInterceptor(authService),
+			grpcinterceptors.UnaryServerInterceptor(),
+		),
+		grpc.ChainStreamInterceptor(
+			grpcinterceptors.ErrorHandlingStreamServerInterceptor(),
+			grpcinterceptors.LoggingStreamServerInterceptor(),
+			grpcinterceptors.AuthStreamServerInterceptor(authService),
+			grpcinterceptors.StreamServerInterceptor(),
+		),
+	)
 	analytics.RegisterAnalyticsServiceServer(grpcServer, analyticsGRPCHandler)
 	reflection.Register(grpcServer) // Enable reflection for debugging
 

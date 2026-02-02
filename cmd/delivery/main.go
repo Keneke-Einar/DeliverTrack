@@ -132,8 +132,18 @@ func main() {
 	}
 
 	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(grpcinterceptors.UnaryServerInterceptor()),
-		grpc.StreamInterceptor(grpcinterceptors.StreamServerInterceptor()),
+		grpc.ChainUnaryInterceptor(
+			grpcinterceptors.ErrorHandlingUnaryServerInterceptor(),
+			grpcinterceptors.LoggingUnaryServerInterceptor(),
+			grpcinterceptors.AuthUnaryServerInterceptor(authService),
+			grpcinterceptors.UnaryServerInterceptor(),
+		),
+		grpc.ChainStreamInterceptor(
+			grpcinterceptors.ErrorHandlingStreamServerInterceptor(),
+			grpcinterceptors.LoggingStreamServerInterceptor(),
+			grpcinterceptors.AuthStreamServerInterceptor(authService),
+			grpcinterceptors.StreamServerInterceptor(),
+		),
 	)
 	delivery.RegisterDeliveryServiceServer(grpcServer, deliveryGRPCHandler)
 	reflection.Register(grpcServer) // Enable reflection for debugging

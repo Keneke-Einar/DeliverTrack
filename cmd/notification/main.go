@@ -16,6 +16,7 @@ import (
 	authPorts "github.com/Keneke-Einar/delivertrack/pkg/auth/ports"
 
 	"github.com/Keneke-Einar/delivertrack/pkg/config"
+	"github.com/Keneke-Einar/delivertrack/pkg/grpcinterceptors"
 	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/pkg/postgres"
 
@@ -55,7 +56,7 @@ func main() {
 
 	// Notification layer
 	notificationRepo := notificationAdapters.NewPostgresNotificationRepository(db.DB)
-	
+
 	// Initialize RabbitMQ consumer for event handling
 	rabbitMQURL := cfg.RabbitMQ.URL
 	consumer, err := messaging.NewRabbitMQConsumer(rabbitMQURL)
@@ -63,7 +64,7 @@ func main() {
 		log.Fatalf("Failed to create RabbitMQ consumer: %v", err)
 	}
 	defer consumer.Close()
-	
+
 	notificationService := notificationApp.NewNotificationService(notificationRepo, consumer)
 	notificationHTTPHandler := notificationAdapters.NewHTTPHandler(notificationService)
 	notificationGRPCHandler := notificationAdapters.NewGRPCHandler(notificationService)
@@ -118,7 +119,20 @@ func main() {
 		log.Fatalf("Failed to listen on gRPC port %s: %v", grpcPort, err)
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			grpcinterceptors.ErrorHandlingUnaryServerInterceptor(),
+			grpcinterceptors.LoggingUnaryServerInterceptor(),
+			grpcinterceptors.AuthUnaryServerInterceptor(authService),
+			grpcinterceptors.UnaryServerInterceptor(),
+		),
+		grpc.ChainStreamInterceptor(
+			grpcinterceptors.ErrorHandlingStreamServerInterceptor(),
+			grpcinterceptors.LoggingStreamServerInterceptor(),
+			grpcinterceptors.AuthStreamServerInterceptor(authService),
+			grpcinterceptors.StreamServerInterceptor(),
+		),
+	)
 	notification.RegisterNotificationServiceServer(grpcServer, notificationGRPCHandler)
 	reflection.Register(grpcServer) // Enable reflection for debugging
 
