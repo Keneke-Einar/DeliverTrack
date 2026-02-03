@@ -37,9 +37,16 @@
 ### Testing
 - [x] CI/CD implementation
 - [x] Comprehensive tracking service tests (unit & integration)
+- [x] Console-based testing suite implementation
+- [ ] Update database schema or registration logic to auto-create customer/courier records
+- [ ] Link user_id to customer_id/courier_id in users table
+- [ ] Run full test suite with delivery creation, tracking, and notifications
+- [ ] Test WebSocket connections for real-time updates
 - [ ] Add integration tests for all services
 - [ ] Add end-to-end testing
 - [ ] Add performance/load testing framework
+- [ ] Load testing with concurrent requests
+- [ ] Integration testing across all services
 
 ### Documentation
 - [x] Create README.md with comprehensive setup instructions
