@@ -90,7 +90,6 @@
 - [x] `PUT /notifications/{id}/read` - Mark notification as read
 - [ ] Implement WebSocket notifications to customers
 - [ ] Add SMS/email notifications for status updates
-- [ ] Implement push notifications for mobile apps
 
 ### Analytics Service APIs
 - [x] Basic REST endpoints for analytics data
@@ -288,6 +287,28 @@
 - [ ] Implement courier performance analytics
 - [ ] Add route optimization calculations
 
+### Web Interfaces
+
+#### Customer/Courier Portal
+- [ ] Set up React + TypeScript development environment
+- [ ] Implement user authentication and role-based routing
+- [ ] Create delivery tracking interface with real-time maps
+- [ ] Add order management for customers (create, view, track)
+- [ ] Implement courier location update interface with GPS
+- [ ] Add WebSocket integration for live delivery updates
+- [ ] Create responsive design for desktop and tablet
+- [ ] Implement notification center for status updates
+
+#### Admin Dashboard
+- [ ] Create admin authentication and access control
+- [ ] Build real-time system monitoring dashboard
+- [ ] Add delivery management with bulk operations
+- [ ] Implement courier performance analytics interface
+- [ ] Create interactive maps showing active deliveries
+- [ ] Add system health monitoring with alerts
+- [ ] Implement user management and role assignment
+- [ ] Add configuration management interface
+
 ### Code Quality & Performance
 - [x] Create shared HTTP utilities package
 - [ ] Implement domain model unification
@@ -321,7 +342,7 @@
 
 ### Phase 4: Advanced Features (❌ Pending)
 - GraphQL analytics API
-- Admin dashboard
+- Web interfaces (Customer/Courier portal + Admin dashboard)
 - A/B testing and experimentation
 - Advanced resilience patterns
 
@@ -329,4 +350,4 @@
 
 **Total Estimated Development Time:** 2-3 weeks
 **Current Completion:** ~75%
-**Remaining Work:** Advanced features, monitoring, and optimization
+**Remaining Work:** Advanced features (including web interfaces), monitoring, and optimization

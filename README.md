@@ -2,7 +2,7 @@
 
 **Real-Time Package Tracking System**
 
-A microservices-based delivery tracking platform built with Golang, featuring real-time location updates, event-driven architecture, and comprehensive analytics.
+A microservices-based delivery tracking platform built with Golang, featuring real-time location updates, event-driven architecture, comprehensive analytics, and web-based user interfaces for customers, couriers, and administrators.
 
 ## 🚀 Tech Stack
 
@@ -15,6 +15,7 @@ A microservices-based delivery tracking platform built with Golang, featuring re
 | **Cache** | Redis |
 | **Message Queue** | RabbitMQ |
 | **Real-Time** | WebSockets |
+| **Web Framework** | React + TypeScript (Advanced Phase) |
 | **Containerization** | Docker |
 | **Monitoring** | Prometheus + Grafana |
 | **Analytics** | GraphQL |
@@ -79,6 +80,22 @@ JWT-based authentication with role-based access control:
 | **Customer** | Create and view own deliveries |
 | **Courier** | Update location and delivery status |
 | **Admin** | Full system access |
+
+## 🌐 Web Interfaces
+
+### Customer/Courier Portal
+- **Real-time delivery tracking** with interactive maps
+- **Order management** for customers (create, view, track deliveries)
+- **Location updates** for couriers with GPS integration
+- **WebSocket-powered live updates** for delivery status changes
+- **Responsive design** optimized for desktop and tablet use
+
+### Admin Dashboard
+- **Real-time system monitoring** with live metrics
+- **Delivery management** with bulk operations
+- **Courier performance analytics** and route optimization
+- **System health monitoring** with alerting capabilities
+- **Interactive maps** showing all active deliveries and couriers
 
 ## 📡 API Endpoints
 
@@ -217,6 +234,9 @@ delivertrack/
 │   ├── messaging/         # RabbitMQ client
 │   ├── cache/             # Redis client
 │   └── websocket/         # WebSocket handlers
+├── web/                   # Web applications (Advanced Phase)
+│   ├── customer-portal/   # React app for customers/couriers
+│   └── admin-dashboard/   # React app for administrators
 ├── migrations/            # Database migrations
 ├── docker/                # Dockerfiles
 ├── docker-compose.yml
@@ -251,7 +271,8 @@ Available analytics queries:
 - [ ] Circuit Breaker for external mapping APIs
 - [ ] A/B testing for routing algorithms
 - [ ] Load testing scenarios
-- [ ] Admin dashboard with real-time map
+- [ ] Customer/Courier web portal with real-time tracking
+- [ ] Admin dashboard with real-time system monitoring
 
 ## 📄 License
 
@@ -259,4 +280,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Estimated Development Time:** 1-1.5 weeks
+**Estimated Development Time:** 2-3 weeks
