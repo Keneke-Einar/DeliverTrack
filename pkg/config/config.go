@@ -20,6 +20,7 @@ type Config struct {
 	RabbitMQ    RabbitMQConfig    `mapstructure:"rabbitmq"`
 	Auth        AuthConfig        `mapstructure:"auth"`
 	Vault       VaultConfig       `mapstructure:"vault"`
+	Logging     LoggingConfig     `mapstructure:"logging"`
 }
 
 // ServiceConfig holds service-specific configuration
@@ -67,6 +68,29 @@ type VaultConfig struct {
 	Address string `mapstructure:"address"`
 	Token   string `mapstructure:"token"`
 	Path    string `mapstructure:"path"`
+}
+
+// LoggingConfig holds logging configuration
+type LoggingConfig struct {
+	Level     string `mapstructure:"level"`
+	Format    string `mapstructure:"format"`
+	Output    string `mapstructure:"output"`
+	Sampling  SamplingConfig `mapstructure:"sampling"`
+	Rotation  RotationConfig `mapstructure:"rotation"`
+}
+
+// SamplingConfig holds log sampling configuration
+type SamplingConfig struct {
+	Initial    int `mapstructure:"initial"`
+	Thereafter int `mapstructure:"thereafter"`
+}
+
+// RotationConfig holds log rotation configuration
+type RotationConfig struct {
+	MaxSize    int  `mapstructure:"max_size"`
+	MaxAge     int  `mapstructure:"max_age"`
+	MaxBackups int  `mapstructure:"max_backups"`
+	Compress   bool `mapstructure:"compress"`
 }
 
 // Load loads configuration from environment variables, config files, and Vault
@@ -162,6 +186,15 @@ func setDefaults(serviceName string) {
 	viper.SetDefault("vault.address", "http://localhost:8200")
 	viper.SetDefault("vault.token", "root")
 	viper.SetDefault("vault.path", fmt.Sprintf("secret/%s", serviceName))
+	viper.SetDefault("logging.level", "info")
+	viper.SetDefault("logging.format", "console")
+	viper.SetDefault("logging.output", "stdout")
+	viper.SetDefault("logging.sampling.initial", 100)
+	viper.SetDefault("logging.sampling.thereafter", 100)
+	viper.SetDefault("logging.rotation.max_size", 100)
+	viper.SetDefault("logging.rotation.max_age", 30)
+	viper.SetDefault("logging.rotation.max_backups", 3)
+	viper.SetDefault("logging.rotation.compress", true)
 }
 
 // GetEnv is a helper function to get environment variable with fallback

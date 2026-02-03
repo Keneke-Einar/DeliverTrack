@@ -15,19 +15,20 @@ import (
 	authPorts "github.com/Keneke-Einar/delivertrack/pkg/auth/ports"
 
 	"github.com/Keneke-Einar/delivertrack/pkg/config"
+	"github.com/Keneke-Einar/delivertrack/pkg/logger"
 	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/pkg/postgres"
 
 	"github.com/didip/tollbooth"
 	"github.com/didip/tollbooth/limiter"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 var version = "dev"
 
 type Gateway struct {
 	authService authPorts.AuthService
-	logger      *logrus.Logger
+	logger      *logger.Logger
 }
 
 func main() {
@@ -41,8 +42,10 @@ func main() {
 	jwtSecret := cfg.Auth.JWTSecret
 
 	// Initialize logger
-	logger := logrus.New()
-	logger.SetFormatter(&logrus.JSONFormatter{})
+	lg, err := logger.NewLogger(cfg.Logging, "gateway")
+	if err != nil {
+		log.Fatalf("Failed to initialize logger: %v", err)
+	}
 
 	// Initialize database for auth
 	db, err := postgres.New(databaseURL)
@@ -51,7 +54,7 @@ func main() {
 	}
 	defer db.Close()
 
-	logger.Info("Database connection established")
+	lg.Info("Database connection established")
 
 	// Initialize auth service
 	userRepo := authAdapters.NewPostgresUserRepository(db.DB)
@@ -60,7 +63,7 @@ func main() {
 
 	gateway := &Gateway{
 		authService: authService,
-		logger:      logger,
+		logger:      lg,
 	}
 
 	// Setup rate limiter
@@ -88,7 +91,7 @@ func main() {
 	// Wrap with logging and CORS
 	handler := gateway.loggingMiddleware(gateway.corsMiddleware(mux))
 
-	logger.Printf("API Gateway v%s starting on port %s", version, port)
+	lg.Info("API Gateway starting", zap.String("version", version), zap.String("port", port))
 
 	if err := http.ListenAndServe(":"+port, handler); err != nil {
 		log.Fatal(err)
@@ -115,11 +118,11 @@ func (g *Gateway) authMiddleware(lmt *limiter.Limiter, next http.HandlerFunc) ht
 		// Rate limiting
 		httpError := tollbooth.LimitByRequest(lmt, w, r)
 		if httpError != nil {
-			g.logger.WithFields(logrus.Fields{
-				"ip":    r.RemoteAddr,
-				"path":  r.URL.Path,
-				"error": "rate limited",
-			}).Warn("Request rate limited")
+			g.logger.WithFields(
+				zap.String("ip", r.RemoteAddr),
+				zap.String("path", r.URL.Path),
+				zap.String("error", "rate limited"),
+			).Warn("Request rate limited")
 			return
 		}
 
@@ -188,15 +191,15 @@ func (g *Gateway) loggingMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(wrapped, r.WithContext(ctx))
 
-		g.logger.WithFields(logrus.Fields{
-			"method":      r.Method,
-			"path":        r.URL.Path,
-			"status":      wrapped.statusCode,
-			"duration":    time.Since(start),
-			"user_agent":  r.Header.Get("User-Agent"),
-			"remote_addr": r.RemoteAddr,
-			"trace_id":    traceID,
-		}).Info("Request processed")
+		g.logger.WithFields(
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path),
+			zap.Int("status", wrapped.statusCode),
+			zap.Duration("duration", time.Since(start)),
+			zap.String("user_agent", r.Header.Get("User-Agent")),
+			zap.String("remote_addr", r.RemoteAddr),
+			zap.String("trace_id", traceID),
+		).Info("Request processed")
 	})
 }
 

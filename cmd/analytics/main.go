@@ -17,6 +17,7 @@ import (
 
 	"github.com/Keneke-Einar/delivertrack/pkg/config"
 	"github.com/Keneke-Einar/delivertrack/pkg/grpcinterceptors"
+	"github.com/Keneke-Einar/delivertrack/pkg/logger"
 	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/pkg/postgres"
 
@@ -38,6 +39,12 @@ func main() {
 	port := cfg.Service.Port
 	databaseURL := cfg.Database.URL
 	jwtSecret := cfg.Auth.JWTSecret
+
+	// Initialize logger
+	lg, err := logger.NewLogger(cfg.Logging, "analytics")
+	if err != nil {
+		log.Fatalf("Failed to initialize logger: %v", err)
+	}
 
 	// Initialize database
 	db, err := postgres.New(databaseURL)
@@ -111,13 +118,13 @@ func main() {
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			grpcinterceptors.ErrorHandlingUnaryServerInterceptor(),
-			grpcinterceptors.LoggingUnaryServerInterceptor(),
+			grpcinterceptors.LoggingUnaryServerInterceptor(lg),
 			grpcinterceptors.AuthUnaryServerInterceptor(authService),
 			grpcinterceptors.UnaryServerInterceptor(),
 		),
 		grpc.ChainStreamInterceptor(
 			grpcinterceptors.ErrorHandlingStreamServerInterceptor(),
-			grpcinterceptors.LoggingStreamServerInterceptor(),
+			grpcinterceptors.LoggingStreamServerInterceptor(lg),
 			grpcinterceptors.AuthStreamServerInterceptor(authService),
 			grpcinterceptors.StreamServerInterceptor(),
 		),

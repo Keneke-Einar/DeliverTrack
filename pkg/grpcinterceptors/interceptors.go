@@ -3,12 +3,13 @@ package grpcinterceptors
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
 	"github.com/Keneke-Einar/delivertrack/pkg/auth/domain"
 	"github.com/Keneke-Einar/delivertrack/pkg/auth/ports"
+	"github.com/Keneke-Einar/delivertrack/pkg/logger"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -155,22 +156,30 @@ func generateSpanID() string {
 }
 
 // LoggingUnaryServerInterceptor logs gRPC requests with correlation IDs
-func LoggingUnaryServerInterceptor() grpc.UnaryServerInterceptor {
+func LoggingUnaryServerInterceptor(lg *logger.Logger) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		start := time.Now()
 		correlationID := getCorrelationID(ctx)
 
-		log.Printf("[gRPC] %s -> %s (correlation_id: %s)", info.FullMethod, "START", correlationID)
+		lg.WithContext(ctx).WithFields(
+			zap.String("method", info.FullMethod),
+			zap.String("correlation_id", correlationID),
+		).Info("gRPC request started")
 
 		resp, err := handler(ctx, req)
 
 		duration := time.Since(start)
-		status := "SUCCESS"
+		status := "success"
 		if err != nil {
-			status = "ERROR"
+			status = "error"
 		}
 
-		log.Printf("[gRPC] %s -> %s (correlation_id: %s, duration: %v)", info.FullMethod, status, correlationID, duration)
+		lg.WithContext(ctx).WithFields(
+			zap.String("method", info.FullMethod),
+			zap.String("correlation_id", correlationID),
+			zap.String("status", status),
+			zap.Duration("duration", duration),
+		).Info("gRPC request completed")
 
 		return resp, err
 	}
@@ -231,22 +240,30 @@ func GetUserClaimsFromContext(ctx context.Context) (*domain.Claims, bool) {
 }
 
 // LoggingStreamServerInterceptor logs gRPC streaming requests with correlation IDs
-func LoggingStreamServerInterceptor() grpc.StreamServerInterceptor {
+func LoggingStreamServerInterceptor(lg *logger.Logger) grpc.StreamServerInterceptor {
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		start := time.Now()
 		correlationID := getCorrelationID(stream.Context())
 
-		log.Printf("[gRPC Stream] %s -> %s (correlation_id: %s)", info.FullMethod, "START", correlationID)
+		lg.WithContext(stream.Context()).WithFields(
+			zap.String("method", info.FullMethod),
+			zap.String("correlation_id", correlationID),
+		).Info("gRPC stream request started")
 
 		err := handler(srv, stream)
 
 		duration := time.Since(start)
-		status := "SUCCESS"
+		status := "success"
 		if err != nil {
-			status = "ERROR"
+			status = "error"
 		}
 
-		log.Printf("[gRPC Stream] %s -> %s (correlation_id: %s, duration: %v)", info.FullMethod, status, correlationID, duration)
+		lg.WithContext(stream.Context()).WithFields(
+			zap.String("method", info.FullMethod),
+			zap.String("correlation_id", correlationID),
+			zap.String("status", status),
+			zap.Duration("duration", duration),
+		).Info("gRPC stream request completed")
 
 		return err
 	}
