@@ -206,11 +206,18 @@
 - [ ] Optimize Docker images for production
 
 ### Logging
-- [ ] Add structured logging (Zap + correlation IDs):
-  - [ ] Request/response logging with correlation IDs
-  - [ ] Error logging with stack traces
-  - [ ] Performance logging (response times)
-  - [ ] Audit logging for sensitive operations
+- [ ] Implement Zap structured logging across all services:
+  - [ ] Create centralized logger package (`pkg/logger`)
+  - [ ] Add LoggingConfig to config struct (level, format, output)
+  - [ ] Replace logrus in gateway service with Zap
+  - [ ] Replace standard `log` package calls with structured Zap logging
+  - [ ] Update gRPC interceptors to use centralized logger
+  - [ ] Add correlation ID support to all log entries
+  - [ ] Implement different log levels (debug, info, warn, error)
+  - [ ] Add structured fields (service, method, user_id, etc.)
+  - [ ] Configure JSON output for production, console for development
+  - [ ] Add log sampling for high-frequency operations
+  - [ ] Implement log rotation and file output options
 
 ### Prometheus Metrics
 - [ ] Implement Prometheus metrics:
@@ -295,7 +302,7 @@
 ### Error Handling Standardization
 - [ ] Implement consistent error handling patterns:
   - [ ] Structured error responses with error codes
-  - [ ] Error logging with correlation IDs
+  - [x] Error logging with correlation IDs (via Zap implementation)
   - [ ] Graceful error recovery mechanisms
 
 ### Code Organization
