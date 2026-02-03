@@ -1,0 +1,8 @@
+database:
+  url: "postgres://postgres:postgres@localhost:5433/delivertrack?sslmode=disable"
+mongodb:
+  url: "mongodb://admin:admin123@localhost:27017/delivertrack?authSource=admin"
+redis:
+  url: "localhost:6379"
+rabbitmq:
+  url: "amqp://guest:guest@localhost:5672/"

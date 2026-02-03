@@ -78,10 +78,10 @@ func main() {
 	mux.HandleFunc("/health", gateway.healthHandler)
 
 	// API routes
-	mux.Handle("/api/delivery/", gateway.authMiddleware(limiter, gateway.proxyHandler("http://delivery:8080")))
-	mux.Handle("/api/tracking/", gateway.authMiddleware(limiter, gateway.proxyHandler("http://tracking:8081")))
-	mux.Handle("/api/notification/", gateway.authMiddleware(limiter, gateway.proxyHandler("http://notification:8082")))
-	mux.Handle("/api/analytics/", gateway.authMiddleware(limiter, gateway.proxyHandler("http://analytics:8083")))
+	mux.Handle("/api/delivery/", gateway.authMiddleware(limiter, gateway.proxyHandler("delivery", "http://localhost:8080")))
+	mux.Handle("/api/tracking/", gateway.authMiddleware(limiter, gateway.proxyHandler("tracking", "http://localhost:8081")))
+	mux.Handle("/api/notification/", gateway.authMiddleware(limiter, gateway.proxyHandler("notification", "http://localhost:8082")))
+	mux.Handle("/api/analytics/", gateway.authMiddleware(limiter, gateway.proxyHandler("analytics", "http://localhost:8083")))
 
 	// Auth routes (public)
 	authHandler := authAdapters.NewHTTPHandler(gateway.authService, cfg.Auth.JWTExpiration)
@@ -98,13 +98,15 @@ func main() {
 	}
 }
 
-func (g *Gateway) proxyHandler(targetURL string) http.HandlerFunc {
+func (g *Gateway) proxyHandler(serviceName, targetURL string) http.HandlerFunc {
 	target, _ := url.Parse(targetURL)
 	proxy := httputil.NewSingleHostReverseProxy(target)
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Rewrite path
-		r.URL.Path = strings.TrimPrefix(r.URL.Path, "/api")
+		// Rewrite path: strip /api/servicename prefix
+		// e.g., /api/delivery/deliveries/ becomes /deliveries/
+		prefix := "/api/" + serviceName
+		r.URL.Path = strings.TrimPrefix(r.URL.Path, prefix)
 		r.URL.Host = target.Host
 		r.URL.Scheme = target.Scheme
 		r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
