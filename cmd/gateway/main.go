@@ -50,7 +50,7 @@ func main() {
 	// Initialize database for auth
 	db, err := postgres.New(databaseURL)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		lg.Fatal("Failed to connect to database", zap.Error(err))
 	}
 	defer db.Close()
 
@@ -94,7 +94,7 @@ func main() {
 	lg.Info("API Gateway starting", zap.String("version", version), zap.String("port", port))
 
 	if err := http.ListenAndServe(":"+port, handler); err != nil {
-		log.Fatal(err)
+		lg.Fatal("Failed to start HTTP server", zap.Error(err))
 	}
 }
 

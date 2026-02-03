@@ -57,6 +57,7 @@
 - [ ] Add integration tests for all services
 - [ ] Add end-to-end testing
 - [ ] Add performance/load testing framework
+- [ ] Remove unneeded documetns/scripts
 
 ---
 
@@ -213,18 +214,17 @@
 - [ ] Optimize Docker images for production
 
 ### Logging
-- [ ] Implement Zap structured logging across all services:
-  - [ ] Create centralized logger package (`pkg/logger`)
-  - [ ] Add LoggingConfig to config struct (level, format, output)
-  - [ ] Replace logrus in gateway service with Zap
-  - [ ] Replace standard `log` package calls with structured Zap logging
-  - [ ] Update gRPC interceptors to use centralized logger
-  - [ ] Add correlation ID support to all log entries
-  - [ ] Implement different log levels (debug, info, warn, error)
-  - [ ] Add structured fields (service, method, user_id, etc.)
-  - [ ] Configure JSON output for production, console for development
-  - [ ] Add log sampling for high-frequency operations
-  - [ ] Implement log rotation and file output options
+- [x] Implement Zap structured logging across all services:
+  - [x] Create centralized logger package (`pkg/logger`)
+  - [x] Add LoggingConfig to config struct (level, format, output)
+  - [x] Add correlation ID support to all log entries
+  - [x] Implement different log levels (debug, info, warn, error)
+  - [x] Add structured fields (service, method, user_id, etc.)
+  - [x] Configure JSON output for production, console for development
+  - [x] Add log sampling for high-frequency operations
+  - [x] Implement log rotation and file output options
+  - [x] Update gRPC interceptors to use centralized logger
+  - [x] Replace standard `log` package calls in cmd/*/main.go with Zap logging (38 instances)
 
 ### Prometheus Metrics
 - [ ] Implement Prometheus metrics:

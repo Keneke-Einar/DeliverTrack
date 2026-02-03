@@ -10,6 +10,7 @@ import (
 
 	notificationAdapters "github.com/Keneke-Einar/delivertrack/internal/notification/adapters"
 	notificationApp "github.com/Keneke-Einar/delivertrack/internal/notification/app"
+	"go.uber.org/zap"
 
 	authAdapters "github.com/Keneke-Einar/delivertrack/pkg/auth/adapters"
 	authApp "github.com/Keneke-Einar/delivertrack/pkg/auth/app"
@@ -53,7 +54,7 @@ func main() {
 	}
 	defer db.Close()
 
-	log.Println("Database connection established")
+	lg.Info("Database connection established")
 
 	// Wire up dependencies using layered architecture
 
@@ -82,7 +83,7 @@ func main() {
 	if err := notificationService.StartEventConsumption(); err != nil {
 		log.Fatalf("Failed to start event consumption: %v", err)
 	}
-	log.Println("Started consuming delivery and location events")
+	lg.Info("Started consuming delivery and location events")
 
 	// Setup HTTP router
 	mux := http.NewServeMux()
@@ -112,12 +113,16 @@ func main() {
 
 	// Start HTTP server in a goroutine
 	go func() {
-		log.Printf("Notification HTTP service v%s starting on port %s", version, port)
-		log.Printf("Endpoints: POST /login, POST /register")
-		log.Printf("           POST /notifications, GET /notifications, PUT /notifications/{id}/read")
+		lg.Info("Notification HTTP service starting",
+			zap.String("version", version),
+			zap.String("port", port))
+		lg.Info("HTTP endpoints available",
+			zap.Strings("endpoints", []string{
+				"POST /login", "POST /register",
+				"POST /notifications", "GET /notifications", "PUT /notifications/{id}/read"}))
 
 		if err := http.ListenAndServe(":"+port, mux); err != nil {
-			log.Fatal(err)
+			lg.Fatal("Failed to start HTTP server", zap.Error(err))
 		}
 	}()
 
@@ -125,7 +130,8 @@ func main() {
 	grpcPort := "50053"
 	lis, err := net.Listen("tcp", ":"+grpcPort)
 	if err != nil {
-		log.Fatalf("Failed to listen on gRPC port %s: %v", grpcPort, err)
+		lg.Fatal("Failed to listen on gRPC port",
+			zap.String("port", grpcPort), zap.Error(err))
 	}
 
 	grpcServer := grpc.NewServer(
@@ -151,10 +157,12 @@ func main() {
 
 	reflection.Register(grpcServer) // Enable reflection for debugging
 
-	log.Printf("Notification gRPC service v%s starting on port %s", version, grpcPort)
+	lg.Info("Notification gRPC service starting",
+		zap.String("version", version),
+		zap.String("port", grpcPort))
 
 	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve gRPC: %v", err)
+		lg.Fatal("Failed to serve gRPC", zap.Error(err))
 	}
 }
 

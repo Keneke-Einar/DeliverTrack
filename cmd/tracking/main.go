@@ -10,6 +10,7 @@ import (
 
 	trackingAdapters "github.com/Keneke-Einar/delivertrack/internal/tracking/adapters"
 	trackingApp "github.com/Keneke-Einar/delivertrack/internal/tracking/app"
+	"go.uber.org/zap"
 
 	authAdapters "github.com/Keneke-Einar/delivertrack/pkg/auth/adapters"
 	authApp "github.com/Keneke-Einar/delivertrack/pkg/auth/app"
@@ -57,7 +58,7 @@ func main() {
 	}
 	defer db.Close()
 
-	log.Println("PostgreSQL connection established")
+	lg.Info("PostgreSQL connection established")
 
 	// Initialize MongoDB for geospatial data
 	mongoClient, err := mongodb.New(mongoURL)
@@ -66,7 +67,7 @@ func main() {
 	}
 	defer mongoClient.Close(context.Background())
 
-	log.Println("MongoDB connection established")
+	lg.Info("MongoDB connection established")
 
 	// Initialize gRPC clients for inter-service communication
 	deliveryConn, err := grpc.NewClient(cfg.Services.Delivery,
@@ -80,7 +81,7 @@ func main() {
 	defer deliveryConn.Close()
 	deliveryClient := delivery.NewDeliveryServiceClient(deliveryConn)
 
-	log.Println("gRPC clients initialized")
+	lg.Info("gRPC clients initialized")
 
 	// Auth layer
 	userRepo := authAdapters.NewPostgresUserRepository(db.DB)
@@ -167,12 +168,17 @@ func main() {
 
 	// Start HTTP server in a goroutine
 	go func() {
-		log.Printf("Tracking HTTP service v%s starting on port %s", version, port)
-		log.Printf("Endpoints: POST /login, POST /register")
-		log.Printf("           POST /locations, GET /deliveries/{id}/track, GET /deliveries/{id}/location, GET /couriers/{id}/location")
+		lg.Info("Tracking HTTP service starting",
+			zap.String("version", version),
+			zap.String("port", port))
+		lg.Info("HTTP endpoints available",
+			zap.Strings("endpoints", []string{
+				"POST /login", "POST /register",
+				"POST /locations", "GET /deliveries/{id}/track",
+				"GET /deliveries/{id}/location", "GET /couriers/{id}/location"}))
 
 		if err := http.ListenAndServe(":"+port, httpHandler); err != nil {
-			log.Fatal(err)
+			lg.Fatal("Failed to start HTTP server", zap.Error(err))
 		}
 	}()
 
@@ -180,7 +186,8 @@ func main() {
 	grpcPort := "50052"
 	lis, err := net.Listen("tcp", ":"+grpcPort)
 	if err != nil {
-		log.Fatalf("Failed to listen on gRPC port %s: %v", grpcPort, err)
+		lg.Fatal("Failed to listen on gRPC port",
+			zap.String("port", grpcPort), zap.Error(err))
 	}
 
 	grpcServer := grpc.NewServer(
@@ -206,10 +213,12 @@ func main() {
 
 	reflection.Register(grpcServer) // Enable reflection for debugging
 
-	log.Printf("Tracking gRPC service v%s starting on port %s", version, grpcPort)
+	lg.Info("Tracking gRPC service starting",
+		zap.String("version", version),
+		zap.String("port", grpcPort))
 
 	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve gRPC: %v", err)
+		lg.Fatal("Failed to serve gRPC", zap.Error(err))
 	}
 }
 

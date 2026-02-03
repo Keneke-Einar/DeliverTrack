@@ -10,6 +10,7 @@ import (
 
 	analyticsAdapters "github.com/Keneke-Einar/delivertrack/internal/analytics/adapters"
 	analyticsApp "github.com/Keneke-Einar/delivertrack/internal/analytics/app"
+	"go.uber.org/zap"
 
 	authAdapters "github.com/Keneke-Einar/delivertrack/pkg/auth/adapters"
 	authApp "github.com/Keneke-Einar/delivertrack/pkg/auth/app"
@@ -53,7 +54,7 @@ func main() {
 	}
 	defer db.Close()
 
-	log.Println("Database connection established")
+	lg.Info("Database connection established")
 
 	// Wire up dependencies using layered architecture
 
@@ -65,7 +66,7 @@ func main() {
 
 	// Analytics layer
 	analyticsRepo := analyticsAdapters.NewPostgresMetricRepository(db.DB)
-	
+
 	// Initialize RabbitMQ consumer for event handling
 	rabbitMQURL := cfg.RabbitMQ.URL
 	consumer, err := messaging.NewRabbitMQConsumer(rabbitMQURL, lg)
@@ -73,7 +74,7 @@ func main() {
 		log.Fatalf("Failed to create RabbitMQ consumer: %v", err)
 	}
 	defer consumer.Close()
-	
+
 	analyticsService := analyticsApp.NewAnalyticsService(analyticsRepo, consumer, lg)
 	analyticsHTTPHandler := analyticsAdapters.NewHTTPHandler(analyticsService)
 	analyticsGRPCHandler := analyticsAdapters.NewGRPCHandler(analyticsService)
@@ -82,7 +83,7 @@ func main() {
 	if err := analyticsService.StartEventConsumption(); err != nil {
 		log.Fatalf("Failed to start event consumption: %v", err)
 	}
-	log.Println("Started consuming delivery events")
+	lg.Info("Started consuming delivery events")
 
 	// Setup HTTP router
 	mux := http.NewServeMux()
@@ -99,12 +100,17 @@ func main() {
 
 	// Start HTTP server in a goroutine
 	go func() {
-		log.Printf("Analytics HTTP service v%s starting on port %s", version, port)
-		log.Printf("Endpoints: POST /login, POST /register")
-		log.Printf("           POST /metrics, GET /stats/deliveries")
+		lg.Info("Analytics HTTP service starting",
+			zap.String("version", version),
+			zap.String("port", port))
+		lg.Info("HTTP endpoints available",
+			zap.Strings("endpoints", []string{
+				"POST /login", "POST /register",
+				"POST /metrics", "GET /stats/deliveries",
+			}))
 
 		if err := http.ListenAndServe(":"+port, mux); err != nil {
-			log.Fatal(err)
+			lg.Fatal("Failed to start HTTP server", zap.Error(err))
 		}
 	}()
 
@@ -112,7 +118,8 @@ func main() {
 	grpcPort := "50054"
 	lis, err := net.Listen("tcp", ":"+grpcPort)
 	if err != nil {
-		log.Fatalf("Failed to listen on gRPC port %s: %v", grpcPort, err)
+		lg.Fatal("Failed to listen on gRPC port",
+			zap.String("port", grpcPort), zap.Error(err))
 	}
 
 	grpcServer := grpc.NewServer(
@@ -138,10 +145,12 @@ func main() {
 
 	reflection.Register(grpcServer) // Enable reflection for debugging
 
-	log.Printf("Analytics gRPC service v%s starting on port %s", version, grpcPort)
+	lg.Info("Analytics gRPC service starting",
+		zap.String("version", version),
+		zap.String("port", grpcPort))
 
 	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve gRPC: %v", err)
+		lg.Fatal("Failed to serve gRPC", zap.Error(err))
 	}
 }
 

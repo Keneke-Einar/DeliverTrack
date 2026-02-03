@@ -10,6 +10,7 @@ import (
 
 	deliveryAdapters "github.com/Keneke-Einar/delivertrack/internal/delivery/adapters"
 	deliveryApp "github.com/Keneke-Einar/delivertrack/internal/delivery/app"
+	"go.uber.org/zap"
 
 	authAdapters "github.com/Keneke-Einar/delivertrack/pkg/auth/adapters"
 	authApp "github.com/Keneke-Einar/delivertrack/pkg/auth/app"
@@ -53,7 +54,7 @@ func main() {
 	}
 	defer db.Close()
 
-	log.Println("Database connection established")
+	lg.Info("Database connection established")
 
 	// Initialize gRPC clients for inter-service communication
 	deliveryConn, err := grpc.NewClient(cfg.Services.Delivery,
@@ -62,12 +63,12 @@ func main() {
 		grpc.WithStreamInterceptor(grpcinterceptors.StreamClientInterceptor()),
 	)
 	if err != nil {
-		log.Fatalf("Failed to connect to delivery service: %v", err)
+		lg.Fatal("Failed to connect to delivery service", zap.Error(err))
 	}
 	defer deliveryConn.Close()
 	deliveryClient := delivery.NewDeliveryServiceClient(deliveryConn)
 
-	log.Println("gRPC clients initialized")
+	lg.Info("gRPC clients initialized")
 
 	// Auth layer
 	userRepo := authAdapters.NewPostgresUserRepository(db.DB)
@@ -82,7 +83,7 @@ func main() {
 	rabbitMQURL := cfg.RabbitMQ.URL
 	publisher, err := messaging.NewRabbitMQPublisher(rabbitMQURL, lg)
 	if err != nil {
-		log.Fatalf("Failed to create RabbitMQ publisher: %v", err)
+		lg.Fatal("Failed to create RabbitMQ publisher", zap.Error(err))
 	}
 	defer publisher.Close()
 
@@ -124,12 +125,17 @@ func main() {
 
 	// Start HTTP server in a goroutine
 	go func() {
-		log.Printf("Delivery HTTP service v%s starting on port %s", version, port)
-		log.Printf("Endpoints: POST /login, POST /register")
-		log.Printf("           POST /deliveries, GET /deliveries/:id, PUT /deliveries/:id/status, GET /deliveries?status=xxx")
+		lg.Info("Delivery HTTP service starting",
+			zap.String("version", version),
+			zap.String("port", port))
+		lg.Info("HTTP endpoints available",
+			zap.Strings("endpoints", []string{
+				"POST /login", "POST /register",
+				"POST /deliveries", "GET /deliveries/:id",
+				"PUT /deliveries/:id/status", "GET /deliveries?status=xxx"}))
 
 		if err := http.ListenAndServe(":"+port, httpHandler); err != nil {
-			log.Fatal(err)
+			lg.Fatal("Failed to start HTTP server", zap.Error(err))
 		}
 	}()
 
@@ -137,7 +143,8 @@ func main() {
 	grpcPort := "50051"
 	lis, err := net.Listen("tcp", ":"+grpcPort)
 	if err != nil {
-		log.Fatalf("Failed to listen on gRPC port %s: %v", grpcPort, err)
+		lg.Fatal("Failed to listen on gRPC port",
+			zap.String("port", grpcPort), zap.Error(err))
 	}
 
 	grpcServer := grpc.NewServer(
@@ -163,10 +170,12 @@ func main() {
 
 	reflection.Register(grpcServer) // Enable reflection for debugging
 
-	log.Printf("Delivery gRPC service v%s starting on port %s", version, grpcPort)
+	lg.Info("Delivery gRPC service starting",
+		zap.String("version", version),
+		zap.String("port", grpcPort))
 
 	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve gRPC: %v", err)
+		lg.Fatal("Failed to serve gRPC", zap.Error(err))
 	}
 }
 
