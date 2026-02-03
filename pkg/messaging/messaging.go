@@ -7,7 +7,9 @@ import (
 	"log"
 	"time"
 
+	"github.com/Keneke-Einar/delivertrack/pkg/logger"
 	"github.com/streadway/amqp"
+	"go.uber.org/zap"
 )
 
 // Event represents a message event
@@ -137,10 +139,11 @@ type Consumer interface {
 type RabbitMQPublisher struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
+	logger  *logger.Logger
 }
 
 // NewRabbitMQPublisher creates a new RabbitMQ publisher
-func NewRabbitMQPublisher(url string) (*RabbitMQPublisher, error) {
+func NewRabbitMQPublisher(url string, logger *logger.Logger) (*RabbitMQPublisher, error) {
 	conn, err := amqp.Dial(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to RabbitMQ: %w", err)
@@ -155,6 +158,7 @@ func NewRabbitMQPublisher(url string) (*RabbitMQPublisher, error) {
 	return &RabbitMQPublisher{
 		conn:    conn,
 		channel: channel,
+		logger:  logger,
 	}, nil
 }
 
@@ -197,7 +201,12 @@ func (p *RabbitMQPublisher) Publish(ctx context.Context, exchange, routingKey st
 		return fmt.Errorf("failed to publish message: %w", err)
 	}
 
-	log.Printf("Published event %s to exchange %s with routing key %s", event.ID, exchange, routingKey)
+	p.logger.WithContext(ctx).WithFields(
+		zap.String("event_id", event.ID),
+		zap.String("exchange", exchange),
+		zap.String("routing_key", routingKey),
+		zap.String("event_type", event.Type),
+	).Info("Published event to RabbitMQ")
 	return nil
 }
 
@@ -216,10 +225,11 @@ func (p *RabbitMQPublisher) Close() error {
 type RabbitMQConsumer struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
+	logger  *logger.Logger
 }
 
 // NewRabbitMQConsumer creates a new RabbitMQ consumer
-func NewRabbitMQConsumer(url string) (*RabbitMQConsumer, error) {
+func NewRabbitMQConsumer(url string, logger *logger.Logger) (*RabbitMQConsumer, error) {
 	conn, err := amqp.Dial(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to RabbitMQ: %w", err)
@@ -234,6 +244,7 @@ func NewRabbitMQConsumer(url string) (*RabbitMQConsumer, error) {
 	return &RabbitMQConsumer{
 		conn:    conn,
 		channel: channel,
+		logger:  logger,
 	}, nil
 }
 
@@ -272,13 +283,20 @@ func (c *RabbitMQConsumer) Consume(queue string, handler func(Event) error) erro
 		for d := range msgs {
 			var event Event
 			if err := json.Unmarshal(d.Body, &event); err != nil {
-				log.Printf("Failed to unmarshal event: %v", err)
+				c.logger.WithFields(
+					zap.Error(err),
+					zap.String("message_id", d.MessageId),
+				).Error("Failed to unmarshal event")
 				d.Nack(false, false) // Don't requeue
 				continue
 			}
 
 			if err := handler(event); err != nil {
-				log.Printf("Failed to handle event %s: %v", event.ID, err)
+				c.logger.WithFields(
+					zap.Error(err),
+					zap.String("event_id", event.ID),
+					zap.String("event_type", event.Type),
+				).Error("Failed to handle event")
 				d.Nack(false, false) // Don't requeue, send to dead letter queue
 				continue
 			}
@@ -287,7 +305,7 @@ func (c *RabbitMQConsumer) Consume(queue string, handler func(Event) error) erro
 		}
 	}()
 
-	log.Printf("Started consuming from queue: %s", queue)
+	c.logger.WithFields(zap.String("queue", queue)).Info("Started consuming from queue")
 	return nil
 }
 

@@ -7,9 +7,11 @@ import (
 
 	"github.com/Keneke-Einar/delivertrack/internal/delivery/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/delivery/ports"
+	"github.com/Keneke-Einar/delivertrack/pkg/logger"
 	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/pkg/resilience"
 	"github.com/Keneke-Einar/delivertrack/proto/delivery"
+	"go.uber.org/zap"
 )
 
 // DeliveryService implements the delivery use cases
@@ -18,23 +20,32 @@ type DeliveryService struct {
 	publisher      messaging.Publisher
 	deliveryClient delivery.DeliveryServiceClient
 	deliveryCB     *resilience.CircuitBreaker
+	logger         *logger.Logger
 }
 
 // NewDeliveryService creates a new delivery service
-func NewDeliveryService(repo ports.DeliveryRepository, publisher messaging.Publisher, deliveryClient delivery.DeliveryServiceClient) *DeliveryService {
+func NewDeliveryService(repo ports.DeliveryRepository, publisher messaging.Publisher, deliveryClient delivery.DeliveryServiceClient, logger *logger.Logger) *DeliveryService {
 	return &DeliveryService{
 		repo:           repo,
 		publisher:      publisher,
 		deliveryClient: deliveryClient,
 		deliveryCB:     resilience.NewCircuitBreaker("delivery", 3, 10*time.Second),
+		logger:         logger,
 	}
 }
 
 // CreateDelivery creates a new delivery
 func (s *DeliveryService) CreateDelivery(ctx context.Context, req ports.CreateDeliveryRequest) (*domain.Delivery, error) {
+	s.logger.InfoWithFields(ctx, "Creating new delivery",
+		zap.Int("customer_id", req.CustomerID),
+		zap.String("method", "CreateDelivery"))
+
 	// Create domain entity with validation
 	delivery, err := domain.NewDelivery(req.CustomerID, req.PickupLocation, req.DeliveryLocation)
 	if err != nil {
+		s.logger.ErrorWithFields(ctx, "Failed to create delivery domain entity",
+			zap.Int("customer_id", req.CustomerID),
+			zap.Error(err))
 		return nil, err
 	}
 
@@ -52,8 +63,16 @@ func (s *DeliveryService) CreateDelivery(ctx context.Context, req ports.CreateDe
 
 	// Persist to repository
 	if err := s.repo.Create(ctx, delivery); err != nil {
+		s.logger.ErrorWithFields(ctx, "Failed to persist delivery",
+			zap.Int("customer_id", req.CustomerID),
+			zap.Error(err))
 		return nil, fmt.Errorf("failed to create delivery: %w", err)
 	}
+
+	s.logger.InfoWithFields(ctx, "Delivery created successfully",
+		zap.Int("delivery_id", delivery.ID),
+		zap.Int("customer_id", req.CustomerID),
+		zap.String("status", string(delivery.Status)))
 
 	// Publish delivery created event
 	traceCtx := messaging.ExtractTraceContextFromContext(ctx, "delivery-service", "create_delivery")

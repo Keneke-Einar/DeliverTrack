@@ -7,10 +7,12 @@ import (
 
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/ports"
+	"github.com/Keneke-Einar/delivertrack/pkg/logger"
 	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/pkg/resilience"
 	"github.com/Keneke-Einar/delivertrack/pkg/websocket"
 	"github.com/Keneke-Einar/delivertrack/proto/delivery"
+	"go.uber.org/zap"
 )
 
 // TrackingService implements tracking use cases
@@ -20,16 +22,18 @@ type TrackingService struct {
 	publisher      messaging.Publisher
 	deliveryClient delivery.DeliveryServiceClient
 	deliveryCB     *resilience.CircuitBreaker
+	logger         *logger.Logger
 }
 
 // NewTrackingService creates a new tracking service
-func NewTrackingService(repo ports.LocationRepository, publisher messaging.Publisher, deliveryClient delivery.DeliveryServiceClient) *TrackingService {
+func NewTrackingService(repo ports.LocationRepository, publisher messaging.Publisher, deliveryClient delivery.DeliveryServiceClient, logger *logger.Logger) *TrackingService {
 	return &TrackingService{
 		repo:           repo,
 		wsHub:          websocket.NewHub(),
 		publisher:      publisher,
 		deliveryClient: deliveryClient,
 		deliveryCB:     resilience.NewCircuitBreaker("delivery", 3, 10*time.Second),
+		logger:         logger,
 	}
 }
 
@@ -45,9 +49,18 @@ func (s *TrackingService) GetWebSocketHub() *websocket.Hub {
 
 // RecordLocation records a new location point
 func (s *TrackingService) RecordLocation(ctx context.Context, req ports.RecordLocationRequest) (*domain.Location, error) {
+	s.logger.InfoWithFields(ctx, "Recording location update",
+		zap.Int("delivery_id", req.DeliveryID),
+		zap.Int("courier_id", req.CourierID),
+		zap.Float64("latitude", req.Latitude),
+		zap.Float64("longitude", req.Longitude))
+
 	// Create domain entity with validation
 	location, err := domain.NewLocation(req.DeliveryID, req.CourierID, req.Latitude, req.Longitude)
 	if err != nil {
+		s.logger.ErrorWithFields(ctx, "Failed to create location domain entity",
+			zap.Int("delivery_id", req.DeliveryID),
+			zap.Error(err))
 		return nil, err
 	}
 

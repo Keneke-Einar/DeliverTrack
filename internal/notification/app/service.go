@@ -7,20 +7,24 @@ import (
 
 	"github.com/Keneke-Einar/delivertrack/internal/notification/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/notification/ports"
+	"github.com/Keneke-Einar/delivertrack/pkg/logger"
 	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
+	"go.uber.org/zap"
 )
 
 // NotificationService implements notification use cases
 type NotificationService struct {
 	repo     ports.NotificationRepository
 	consumer messaging.Consumer
+	logger   *logger.Logger
 }
 
 // NewNotificationService creates a new notification service
-func NewNotificationService(repo ports.NotificationRepository, consumer messaging.Consumer) *NotificationService {
+func NewNotificationService(repo ports.NotificationRepository, consumer messaging.Consumer, logger *logger.Logger) *NotificationService {
 	return &NotificationService{
 		repo:     repo,
 		consumer: consumer,
+		logger:   logger,
 	}
 }
 
@@ -31,9 +35,17 @@ func (s *NotificationService) SendNotification(
 	notifType domain.NotificationType,
 	subject, message, recipient string,
 ) (*domain.Notification, error) {
+	s.logger.InfoWithFields(ctx, "Sending notification",
+		zap.Int("user_id", userID),
+		zap.String("type", string(notifType)),
+		zap.String("recipient", recipient))
+
 	// Create domain entity with validation
 	notification, err := domain.NewNotification(userID, notifType, subject, message, recipient)
 	if err != nil {
+		s.logger.ErrorWithFields(ctx, "Failed to create notification domain entity",
+			zap.Int("user_id", userID),
+			zap.Error(err))
 		return nil, err
 	}
 

@@ -7,20 +7,24 @@ import (
 
 	"github.com/Keneke-Einar/delivertrack/internal/analytics/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/analytics/ports"
+	"github.com/Keneke-Einar/delivertrack/pkg/logger"
 	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
+	"go.uber.org/zap"
 )
 
 // AnalyticsService implements analytics use cases
 type AnalyticsService struct {
 	repo     ports.MetricRepository
 	consumer messaging.Consumer
+	logger   *logger.Logger
 }
 
 // NewAnalyticsService creates a new analytics service
-func NewAnalyticsService(repo ports.MetricRepository, consumer messaging.Consumer) *AnalyticsService {
+func NewAnalyticsService(repo ports.MetricRepository, consumer messaging.Consumer, logger *logger.Logger) *AnalyticsService {
 	return &AnalyticsService{
 		repo:     repo,
 		consumer: consumer,
+		logger:   logger,
 	}
 }
 
@@ -33,9 +37,18 @@ func (s *AnalyticsService) RecordMetric(
 	value float64,
 	metadata map[string]interface{},
 ) (*domain.Metric, error) {
+	s.logger.InfoWithFields(ctx, "Recording metric",
+		zap.String("metric_type", string(metricType)),
+		zap.Int("entity_id", entityID),
+		zap.String("entity_type", entityType),
+		zap.Float64("value", value))
+
 	// Create domain entity with validation
 	metric, err := domain.NewMetric(metricType, entityID, entityType, value)
 	if err != nil {
+		s.logger.ErrorWithFields(ctx, "Failed to create metric domain entity",
+			zap.String("metric_type", string(metricType)),
+			zap.Error(err))
 		return nil, err
 	}
 

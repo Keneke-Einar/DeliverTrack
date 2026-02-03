@@ -68,13 +68,13 @@ func main() {
 	
 	// Initialize RabbitMQ consumer for event handling
 	rabbitMQURL := cfg.RabbitMQ.URL
-	consumer, err := messaging.NewRabbitMQConsumer(rabbitMQURL)
+	consumer, err := messaging.NewRabbitMQConsumer(rabbitMQURL, lg)
 	if err != nil {
 		log.Fatalf("Failed to create RabbitMQ consumer: %v", err)
 	}
 	defer consumer.Close()
 	
-	analyticsService := analyticsApp.NewAnalyticsService(analyticsRepo, consumer)
+	analyticsService := analyticsApp.NewAnalyticsService(analyticsRepo, consumer, lg)
 	analyticsHTTPHandler := analyticsAdapters.NewHTTPHandler(analyticsService)
 	analyticsGRPCHandler := analyticsAdapters.NewGRPCHandler(analyticsService)
 

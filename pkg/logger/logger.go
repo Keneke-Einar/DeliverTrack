@@ -77,6 +77,26 @@ func (l *Logger) WithFields(fields ...zap.Field) *Logger {
 	return &Logger{Logger: l.Logger.With(fields...)}
 }
 
+// InfoWithFields logs an info message with context and fields
+func (l *Logger) InfoWithFields(ctx context.Context, msg string, fields ...zap.Field) {
+	l.WithContext(ctx).With(fields...).Info(msg)
+}
+
+// ErrorWithFields logs an error message with context and fields
+func (l *Logger) ErrorWithFields(ctx context.Context, msg string, fields ...zap.Field) {
+	l.WithContext(ctx).With(fields...).Error(msg)
+}
+
+// WarnWithFields logs a warning message with context and fields
+func (l *Logger) WarnWithFields(ctx context.Context, msg string, fields ...zap.Field) {
+	l.WithContext(ctx).With(fields...).Warn(msg)
+}
+
+// DebugWithFields logs a debug message with context and fields
+func (l *Logger) DebugWithFields(ctx context.Context, msg string, fields ...zap.Field) {
+	l.WithContext(ctx).With(fields...).Debug(msg)
+}
+
 // SetCorrelationID sets correlation ID in context
 func SetCorrelationID(ctx context.Context, id string) context.Context {
 	return context.WithValue(ctx, correlationIDKey, id)

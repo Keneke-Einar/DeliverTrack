@@ -7,12 +7,20 @@ import (
 
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/ports"
+	"github.com/Keneke-Einar/delivertrack/pkg/logger"
 	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/proto/common"
 	"github.com/Keneke-Einar/delivertrack/proto/delivery"
 	"github.com/Keneke-Einar/delivertrack/proto/notification"
+	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
 )
+
+// createTestLogger creates a test logger for unit tests
+func createTestLogger(t *testing.T) *logger.Logger {
+	zapLogger := zaptest.NewLogger(t)
+	return &logger.Logger{Logger: zapLogger}
+}
 
 // MockLocationRepository is a mock implementation of LocationRepository for testing
 type MockLocationRepository struct {
@@ -131,24 +139,24 @@ type MockDeliveryClient struct{}
 
 func (m *MockDeliveryClient) CreateDelivery(ctx context.Context, in *delivery.CreateDeliveryRequest, opts ...grpc.CallOption) (*delivery.CreateDeliveryResponse, error) {
 	return &delivery.CreateDeliveryResponse{
-		DeliveryId:    "mock-delivery-id",
+		DeliveryId:     "mock-delivery-id",
 		TrackingNumber: "mock-tracking-number",
-		CreatedAt:     1234567890,
+		CreatedAt:      1234567890,
 	}, nil
 }
 
 func (m *MockDeliveryClient) GetDelivery(ctx context.Context, in *delivery.GetDeliveryRequest, opts ...grpc.CallOption) (*delivery.GetDeliveryResponse, error) {
 	return &delivery.GetDeliveryResponse{
 		Delivery: &delivery.Delivery{
-			DeliveryId:      "mock-delivery-id",
-			CustomerId:      "1",
-			DriverId:        "1",
-			TrackingNumber:  "mock-tracking-number",
-			PickupLocation:  &common.Location{Latitude: 40.7128, Longitude: -74.0060},
+			DeliveryId:       "mock-delivery-id",
+			CustomerId:       "1",
+			DriverId:         "1",
+			TrackingNumber:   "mock-tracking-number",
+			PickupLocation:   &common.Location{Latitude: 40.7128, Longitude: -74.0060},
 			DeliveryLocation: &common.Location{Latitude: 40.7589, Longitude: -73.9851},
-			Status:          delivery.DeliveryStatus_DELIVERY_STATUS_IN_TRANSIT,
-			CreatedAt:       1234567890,
-			UpdatedAt:       1234567890,
+			Status:           delivery.DeliveryStatus_DELIVERY_STATUS_IN_TRANSIT,
+			CreatedAt:        1234567890,
+			UpdatedAt:        1234567890,
 		},
 	}, nil
 }
@@ -162,7 +170,7 @@ func (m *MockDeliveryClient) UpdateDeliveryStatus(ctx context.Context, in *deliv
 
 func (m *MockDeliveryClient) AssignDriver(ctx context.Context, in *delivery.AssignDriverRequest, opts ...grpc.CallOption) (*delivery.AssignDriverResponse, error) {
 	return &delivery.AssignDriverResponse{
-		Success:   true,
+		Success:    true,
 		AssignedAt: 1234567890,
 	}, nil
 }
@@ -173,7 +181,7 @@ func (m *MockDeliveryClient) ListDeliveries(ctx context.Context, in *delivery.Li
 
 func (m *MockDeliveryClient) CancelDelivery(ctx context.Context, in *delivery.CancelDeliveryRequest, opts ...grpc.CallOption) (*delivery.CancelDeliveryResponse, error) {
 	return &delivery.CancelDeliveryResponse{
-		Success:    true,
+		Success:     true,
 		CancelledAt: 1234567890,
 	}, nil
 }
@@ -243,7 +251,8 @@ func TestTrackingService_RecordLocation(t *testing.T) {
 	repo := NewMockLocationRepository()
 	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
-	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient)
+	testLogger := createTestLogger(t)
+	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient, testLogger)
 
 	req := ports.RecordLocationRequest{
 		DeliveryID: 1,
@@ -302,7 +311,8 @@ func TestTrackingService_RecordLocation_InvalidData(t *testing.T) {
 	repo := NewMockLocationRepository()
 	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
-	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient)
+	testLogger := createTestLogger(t)
+	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient, testLogger)
 
 	req := ports.RecordLocationRequest{
 		DeliveryID: 0, // Invalid
@@ -321,7 +331,8 @@ func TestTrackingService_GetDeliveryTrack(t *testing.T) {
 	repo := NewMockLocationRepository()
 	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
-	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient)
+	testLogger := createTestLogger(t)
+	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient, testLogger)
 
 	// Add some test locations
 	ctx := context.Background()
@@ -367,7 +378,8 @@ func TestTrackingService_GetCurrentLocation(t *testing.T) {
 	repo := NewMockLocationRepository()
 	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
-	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient)
+	testLogger := createTestLogger(t)
+	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient, testLogger)
 
 	ctx := context.Background()
 
@@ -406,7 +418,8 @@ func TestTrackingService_GetCourierLocation(t *testing.T) {
 	repo := NewMockLocationRepository()
 	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
-	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient)
+	testLogger := createTestLogger(t)
+	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient, testLogger)
 
 	ctx := context.Background()
 
@@ -448,7 +461,8 @@ func TestTrackingService_CalculateETAToDestination(t *testing.T) {
 	repo := NewMockLocationRepository()
 	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
-	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient)
+	testLogger := createTestLogger(t)
+	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient, testLogger)
 
 	ctx := context.Background()
 

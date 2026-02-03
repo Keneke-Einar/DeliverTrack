@@ -8,12 +8,20 @@ import (
 
 	"github.com/Keneke-Einar/delivertrack/internal/delivery/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/delivery/ports"
+	"github.com/Keneke-Einar/delivertrack/pkg/logger"
 	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/proto/analytics"
 	"github.com/Keneke-Einar/delivertrack/proto/delivery"
 	"github.com/Keneke-Einar/delivertrack/proto/notification"
+	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
 )
+
+// createTestLogger creates a test logger for unit tests
+func createTestLogger(t *testing.T) *logger.Logger {
+	zapLogger := zaptest.NewLogger(t)
+	return &logger.Logger{Logger: zapLogger}
+}
 
 // MockDeliveryRepository is a mock implementation of DeliveryRepository for testing
 type MockDeliveryRepository struct {
@@ -373,7 +381,8 @@ func TestDeliveryService_CreateDelivery(t *testing.T) {
 			mockRepo.SetCreateError(tt.mockCreateErr)
 			mockPublisher := NewMockPublisher()
 			mockDeliveryClient := &MockDeliveryClient{}
-			service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient)
+			testLogger := createTestLogger(t)
+			service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient, testLogger)
 
 			delivery, err := service.CreateDelivery(context.Background(), ports.CreateDeliveryRequest{
 				CustomerID:       tt.customerID,
@@ -434,7 +443,8 @@ func TestDeliveryService_GetDelivery(t *testing.T) {
 	mockRepo := NewMockDeliveryRepository()
 	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
-	service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient)
+	testLogger := createTestLogger(t)
+	service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient, testLogger)
 
 	// Create a test delivery
 	delivery := &domain.Delivery{
@@ -571,7 +581,8 @@ func TestDeliveryService_ListDeliveries(t *testing.T) {
 	mockRepo := NewMockDeliveryRepository()
 	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
-	service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient)
+	testLogger := createTestLogger(t)
+	service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient, testLogger)
 
 	// Create test deliveries
 	deliveries := []*domain.Delivery{
@@ -694,7 +705,8 @@ func TestDeliveryService_UpdateDeliveryStatus(t *testing.T) {
 	mockRepo := NewMockDeliveryRepository()
 	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
-	service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient)
+	testLogger := createTestLogger(t)
+	service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient, testLogger)
 
 	// Create a test delivery
 	delivery := &domain.Delivery{

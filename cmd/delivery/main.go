@@ -80,13 +80,13 @@ func main() {
 
 	// Initialize RabbitMQ publisher for event publishing
 	rabbitMQURL := cfg.RabbitMQ.URL
-	publisher, err := messaging.NewRabbitMQPublisher(rabbitMQURL)
+	publisher, err := messaging.NewRabbitMQPublisher(rabbitMQURL, lg)
 	if err != nil {
 		log.Fatalf("Failed to create RabbitMQ publisher: %v", err)
 	}
 	defer publisher.Close()
 
-	deliveryService := deliveryApp.NewDeliveryService(deliveryRepo, publisher, deliveryClient)
+	deliveryService := deliveryApp.NewDeliveryService(deliveryRepo, publisher, deliveryClient, lg)
 	deliveryHTTPHandler := deliveryAdapters.NewHTTPHandler(deliveryService)
 	deliveryGRPCHandler := deliveryAdapters.NewGRPCHandler(deliveryService)
 

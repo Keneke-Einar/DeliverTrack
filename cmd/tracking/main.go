@@ -93,13 +93,13 @@ func main() {
 
 	// Initialize RabbitMQ publisher for event publishing
 	rabbitMQURL := cfg.RabbitMQ.URL
-	publisher, err := messaging.NewRabbitMQPublisher(rabbitMQURL)
+	publisher, err := messaging.NewRabbitMQPublisher(rabbitMQURL, lg)
 	if err != nil {
 		log.Fatalf("Failed to create RabbitMQ publisher: %v", err)
 	}
 	defer publisher.Close()
 
-	trackingService := trackingApp.NewTrackingService(trackingRepo, publisher, deliveryClient)
+	trackingService := trackingApp.NewTrackingService(trackingRepo, publisher, deliveryClient, lg)
 	trackingHTTPHandler := trackingAdapters.NewHTTPHandler(trackingService)
 	trackingGRPCHandler := trackingAdapters.NewGRPCHandler(trackingService)
 
