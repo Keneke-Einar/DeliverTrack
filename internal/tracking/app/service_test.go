@@ -7,6 +7,7 @@ import (
 
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/ports"
+	authDomain "github.com/Keneke-Einar/delivertrack/pkg/auth/domain"
 	"github.com/Keneke-Einar/delivertrack/pkg/logger"
 	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/proto/common"
@@ -247,12 +248,53 @@ func (m *MockNotificationClient) MarkAsRead(ctx context.Context, in *notificatio
 	return &notification.MarkAsReadResponse{Success: true}, nil
 }
 
+// MockAuthService is a mock implementation of AuthService for testing
+type MockAuthService struct{}
+
+func (m *MockAuthService) Register(ctx context.Context, username, email, password, role string, customerID, courierID *int) (*authDomain.User, error) {
+	return &authDomain.User{
+		ID:         1,
+		Username:   username,
+		Email:      email,
+		Role:       role,
+		CustomerID: customerID,
+		CourierID:  courierID,
+	}, nil
+}
+
+func (m *MockAuthService) Authenticate(ctx context.Context, username, password string) (token string, user *authDomain.User, err error) {
+	return "mock-jwt-token", &authDomain.User{
+		ID:       1,
+		Username: username,
+		Role:     "customer",
+	}, nil
+}
+
+func (m *MockAuthService) ValidateToken(ctx context.Context, tokenString string) (*authDomain.Claims, error) {
+	customerID := 1
+	return &authDomain.Claims{
+		UserID:     1,
+		Username:   "testuser",
+		Role:       "customer",
+		CustomerID: &customerID,
+	}, nil
+}
+
+func (m *MockAuthService) GetUser(ctx context.Context, id int) (*authDomain.User, error) {
+	return &authDomain.User{
+		ID:       id,
+		Username: "testuser",
+		Role:     "customer",
+	}, nil
+}
+
 func TestTrackingService_RecordLocation(t *testing.T) {
 	repo := NewMockLocationRepository()
 	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
+	mockAuthService := &MockAuthService{}
 	testLogger := createTestLogger(t)
-	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient, testLogger)
+	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient, mockAuthService, testLogger)
 
 	req := ports.RecordLocationRequest{
 		DeliveryID: 1,
@@ -311,8 +353,9 @@ func TestTrackingService_RecordLocation_InvalidData(t *testing.T) {
 	repo := NewMockLocationRepository()
 	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
+	mockAuthService := &MockAuthService{}
 	testLogger := createTestLogger(t)
-	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient, testLogger)
+	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient, mockAuthService, testLogger)
 
 	req := ports.RecordLocationRequest{
 		DeliveryID: 0, // Invalid
@@ -331,8 +374,9 @@ func TestTrackingService_GetDeliveryTrack(t *testing.T) {
 	repo := NewMockLocationRepository()
 	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
+	mockAuthService := &MockAuthService{}
 	testLogger := createTestLogger(t)
-	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient, testLogger)
+	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient, mockAuthService, testLogger)
 
 	// Add some test locations
 	ctx := context.Background()
@@ -378,8 +422,9 @@ func TestTrackingService_GetCurrentLocation(t *testing.T) {
 	repo := NewMockLocationRepository()
 	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
+	mockAuthService := &MockAuthService{}
 	testLogger := createTestLogger(t)
-	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient, testLogger)
+	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient, mockAuthService, testLogger)
 
 	ctx := context.Background()
 
@@ -418,8 +463,9 @@ func TestTrackingService_GetCourierLocation(t *testing.T) {
 	repo := NewMockLocationRepository()
 	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
+	mockAuthService := &MockAuthService{}
 	testLogger := createTestLogger(t)
-	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient, testLogger)
+	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient, mockAuthService, testLogger)
 
 	ctx := context.Background()
 
@@ -461,8 +507,9 @@ func TestTrackingService_CalculateETAToDestination(t *testing.T) {
 	repo := NewMockLocationRepository()
 	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
+	mockAuthService := &MockAuthService{}
 	testLogger := createTestLogger(t)
-	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient, testLogger)
+	service := NewTrackingService(repo, mockPublisher, mockDeliveryClient, mockAuthService, testLogger)
 
 	ctx := context.Background()
 

@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,11 +10,38 @@ import (
 	"time"
 
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/domain"
+	authDomain "github.com/Keneke-Einar/delivertrack/pkg/auth/domain"
 	"github.com/gorilla/websocket"
 )
 
+// MockAuthService implements authPorts.AuthService for testing
+type MockAuthService struct{}
+
+func (m *MockAuthService) Register(ctx context.Context, username, email, password, role string, customerID, courierID *int) (*authDomain.User, error) {
+	return nil, nil
+}
+
+func (m *MockAuthService) Authenticate(ctx context.Context, username, password string) (token string, user *authDomain.User, err error) {
+	return "mock-token", nil, nil
+}
+
+func (m *MockAuthService) ValidateToken(ctx context.Context, token string) (*authDomain.Claims, error) {
+	// Return a mock customer claim for testing
+	customerID := 1
+	return &authDomain.Claims{
+		UserID:     1,
+		Username:   "testuser",
+		Role:       "customer",
+		CustomerID: &customerID,
+	}, nil
+}
+
+func (m *MockAuthService) GetUser(ctx context.Context, id int) (*authDomain.User, error) {
+	return nil, nil
+}
+
 func TestHub_Run(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(&MockAuthService{})
 	go hub.Run()
 
 	// Give the hub time to start
@@ -26,7 +54,7 @@ func TestHub_Run(t *testing.T) {
 }
 
 func TestHub_BroadcastLocation(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(&MockAuthService{})
 	go hub.Run()
 
 	// Give the hub time to start
@@ -47,7 +75,7 @@ func TestHub_BroadcastLocation(t *testing.T) {
 }
 
 func TestHub_HandleWebSocket_Upgrade(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(&MockAuthService{})
 	go hub.Run()
 
 	// Create a test server
@@ -76,7 +104,7 @@ func TestHub_HandleWebSocket_Upgrade(t *testing.T) {
 }
 
 func TestHub_HandleWebSocket_InvalidPath(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(&MockAuthService{})
 
 	tests := []struct {
 		name string
@@ -139,13 +167,13 @@ func TestLocationMessage_JSON(t *testing.T) {
 }
 
 func TestClient_Creation(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(&MockAuthService{})
 
 	// Create a mock WebSocket connection (we can't easily create a real one in tests)
 	// So we'll just test the client struct creation
 	client := &Client{
 		deliveryID: 1,
-		send:       make(chan *LocationMessage, 256),
+		send:       make(chan interface{}, 256),
 		hub:        hub,
 	}
 

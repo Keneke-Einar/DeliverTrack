@@ -2,11 +2,13 @@ package app
 
 import (
 	"context"
-	"fmt"
+	"fmt"	
+	"strconv"	
 	"time"
 
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/ports"
+	authPorts "github.com/Keneke-Einar/delivertrack/pkg/auth/ports"
 	"github.com/Keneke-Einar/delivertrack/pkg/logger"
 	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/pkg/resilience"
@@ -26,10 +28,10 @@ type TrackingService struct {
 }
 
 // NewTrackingService creates a new tracking service
-func NewTrackingService(repo ports.LocationRepository, publisher messaging.Publisher, deliveryClient delivery.DeliveryServiceClient, logger *logger.Logger) *TrackingService {
+func NewTrackingService(repo ports.LocationRepository, publisher messaging.Publisher, deliveryClient delivery.DeliveryServiceClient, authService authPorts.AuthService, logger *logger.Logger) *TrackingService {
 	return &TrackingService{
 		repo:           repo,
-		wsHub:          websocket.NewHub(),
+		wsHub:          websocket.NewHub(authService),
 		publisher:      publisher,
 		deliveryClient: deliveryClient,
 		deliveryCB:     resilience.NewCircuitBreaker("delivery", 3, 10*time.Second),
@@ -87,6 +89,20 @@ func (s *TrackingService) RecordLocation(ctx context.Context, req ports.RecordLo
 		if err != nil {
 			fmt.Printf("Failed to get delivery for ETA calculation: %v\n", err)
 			return
+		}
+
+		// Send customer notification about location update
+		if s.wsHub != nil && deliveryResp.Delivery.CustomerId != "" {
+			customerID, err := strconv.Atoi(deliveryResp.Delivery.CustomerId)
+			if err == nil {
+				go s.wsHub.BroadcastCustomerNotification(customerID, "location_update", 
+					fmt.Sprintf("Your delivery #%d location has been updated", req.DeliveryID),
+					map[string]interface{}{
+						"delivery_id": req.DeliveryID,
+						"latitude":    location.Latitude,
+						"longitude":   location.Longitude,
+					})
+			}
 		}
 
 		// Calculate ETA to delivery location

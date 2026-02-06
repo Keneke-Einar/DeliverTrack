@@ -100,12 +100,12 @@ func main() {
 	}
 	defer publisher.Close()
 
-	trackingService := trackingApp.NewTrackingService(trackingRepo, publisher, deliveryClient, lg)
+	trackingService := trackingApp.NewTrackingService(trackingRepo, publisher, deliveryClient, authService, lg)
 	trackingHTTPHandler := trackingAdapters.NewHTTPHandler(trackingService)
 	trackingGRPCHandler := trackingAdapters.NewGRPCHandler(trackingService)
 
 	// Initialize WebSocket hub
-	wsHub := websocket.NewHub()
+	wsHub := websocket.NewHub(authService)
 	trackingService.SetWebSocketHub(wsHub)
 
 	// Start WebSocket hub in background
@@ -162,6 +162,14 @@ func main() {
 
 	// WebSocket routes
 	mux.HandleFunc("/ws/deliveries/", wsHub.HandleWebSocket)
+	mux.HandleFunc("/ws/notifications", wsHub.HandleCustomerWebSocket)
+
+	// Metrics endpoint
+	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		connectionCount := wsHub.GetConnectionCount()
+		fmt.Fprintf(w, `{"websocket_connections": %d}`, connectionCount)
+	})
 
 	// Wrap with CORS middleware
 	httpHandler := corsMiddleware(mux)
@@ -175,7 +183,8 @@ func main() {
 			zap.Strings("endpoints", []string{
 				"POST /login", "POST /register",
 				"POST /locations", "GET /deliveries/{id}/track",
-				"GET /deliveries/{id}/location", "GET /couriers/{id}/location"}))
+				"GET /deliveries/{id}/location", "GET /couriers/{id}/location",
+				"GET /metrics", "WS /ws/deliveries/{id}/track", "WS /ws/notifications"}))
 
 		if err := http.ListenAndServe(":"+port, httpHandler); err != nil {
 			lg.Fatal("Failed to start HTTP server", zap.Error(err))

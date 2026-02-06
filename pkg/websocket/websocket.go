@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/domain"
+	authPorts "github.com/Keneke-Einar/delivertrack/pkg/auth/ports"
 	"github.com/gorilla/websocket"
 )
 
@@ -23,50 +24,65 @@ var upgrader = websocket.Upgrader{
 
 // Hub manages WebSocket connections and broadcasts messages
 type Hub struct {
-	// Registered clients by delivery ID
-	clients map[int]map[*Client]bool
-
-	// Inbound messages from clients
-	broadcast chan *LocationMessage
-
-	// Register requests from clients
-	register chan *Client
-
-	// Unregister requests from clients
-	unregister chan *Client
-
-	// Mutex for thread safety
-	mutex sync.RWMutex
+	clients         map[int]map[*Client]bool // Registered clients by delivery ID
+	customerClients map[int]map[*Client]bool // Registered clients by customer ID for notifications
+	broadcast       chan *LocationMessage    // Inbound messages from clients
+	customerBroadcast chan *NotificationMessage // Customer notification messages
+	register        chan *Client             // Register requests from clients
+	unregister      chan *Client             // Unregister requests from clients
+	authService     authPorts.AuthService    // Auth service for token validation
+	connectionCount int                      // Connection count for metrics
+	mutex           sync.RWMutex             // Mutex for thread safety
 }
 
 // LocationMessage represents a location update message
 type LocationMessage struct {
-	DeliveryID int             `json:"delivery_id"`
+	DeliveryID int              `json:"delivery_id"`
 	Location   *domain.Location `json:"location"`
 }
-
+// NotificationMessage represents a customer notification message
+type NotificationMessage struct {
+	CustomerID int    `json:"customer_id"`
+	Type       string `json:"type"` // "status_update", "eta_update", etc.
+	Message    string `json:"message"`
+	Data       interface{} `json:"data,omitempty"`
+}
 // Client represents a WebSocket client
 type Client struct {
 	// The WebSocket connection
 	conn *websocket.Conn
 
-	// The delivery ID this client is tracking
+	// The delivery ID this client is tracking (for delivery tracking)
 	deliveryID int
 
+	// User information for authorization
+	userID     int
+	username   string
+	role       string
+	customerID *int
+	courierID  *int
+
+	// Client type: "delivery_tracker" or "customer_notifications"
+	clientType string
+
 	// Buffered channel of outbound messages
-	send chan *LocationMessage
+	send chan interface{}
 
 	// Reference to the hub
 	hub *Hub
 }
 
 // NewHub creates a new WebSocket hub
-func NewHub() *Hub {
+func NewHub(authService authPorts.AuthService) *Hub {
 	return &Hub{
-		clients:    make(map[int]map[*Client]bool),
-		broadcast:  make(chan *LocationMessage),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
+		clients:           make(map[int]map[*Client]bool),
+		customerClients:   make(map[int]map[*Client]bool),
+		broadcast:         make(chan *LocationMessage),
+		customerBroadcast: make(chan *NotificationMessage),
+		register:          make(chan *Client),
+		unregister:        make(chan *Client),
+		authService:       authService,
+		connectionCount:   0,
 	}
 }
 
@@ -76,27 +92,58 @@ func (h *Hub) Run() {
 		select {
 		case client := <-h.register:
 			h.mutex.Lock()
-			if h.clients[client.deliveryID] == nil {
-				h.clients[client.deliveryID] = make(map[*Client]bool)
+			if client.clientType == "delivery_tracker" {
+				if h.clients[client.deliveryID] == nil {
+					h.clients[client.deliveryID] = make(map[*Client]bool)
+				}
+				h.clients[client.deliveryID][client] = true
+				log.Printf("Delivery tracker registered for delivery %d. Total clients: %d", client.deliveryID, len(h.clients[client.deliveryID]))
+			} else if client.clientType == "customer_notifications" {
+				if client.customerID != nil {
+					if h.customerClients[*client.customerID] == nil {
+						h.customerClients[*client.customerID] = make(map[*Client]bool)
+					}
+					h.customerClients[*client.customerID][client] = true
+					log.Printf("Customer notification client registered for customer %d. Total clients: %d", *client.customerID, len(h.customerClients[*client.customerID]))
+				}
 			}
-			h.clients[client.deliveryID][client] = true
-			log.Printf("Client registered for delivery %d. Total clients: %d", client.deliveryID, len(h.clients[client.deliveryID]))
+			h.connectionCount++
+			log.Printf("Total connections: %d", h.connectionCount)
 			h.mutex.Unlock()
 
 		case client := <-h.unregister:
 			h.mutex.Lock()
-			if clients, ok := h.clients[client.deliveryID]; ok {
-				if _, ok := clients[client]; ok {
-					delete(clients, client)
-					close(client.send)
-					log.Printf("Client unregistered from delivery %d. Remaining clients: %d", client.deliveryID, len(clients))
+			if client.clientType == "delivery_tracker" {
+				if clients, ok := h.clients[client.deliveryID]; ok {
+					if _, ok := clients[client]; ok {
+						delete(clients, client)
+						close(client.send)
+						log.Printf("Delivery tracker unregistered from delivery %d. Remaining clients: %d", client.deliveryID, len(clients))
 
-					// Clean up empty delivery maps
-					if len(clients) == 0 {
-						delete(h.clients, client.deliveryID)
+						// Clean up empty delivery maps
+						if len(clients) == 0 {
+							delete(h.clients, client.deliveryID)
+						}
+					}
+				}
+			} else if client.clientType == "customer_notifications" {
+				if client.customerID != nil {
+					if clients, ok := h.customerClients[*client.customerID]; ok {
+						if _, ok := clients[client]; ok {
+							delete(clients, client)
+							close(client.send)
+							log.Printf("Customer notification client unregistered from customer %d. Remaining clients: %d", *client.customerID, len(clients))
+
+							// Clean up empty customer maps
+							if len(clients) == 0 {
+								delete(h.customerClients, *client.customerID)
+							}
+						}
 					}
 				}
 			}
+			h.connectionCount--
+			log.Printf("Total connections: %d", h.connectionCount)
 			h.mutex.Unlock()
 
 		case message := <-h.broadcast:
@@ -105,6 +152,21 @@ func (h *Hub) Run() {
 				for client := range clients {
 					select {
 					case client.send <- message:
+					default:
+						// Client send channel is full, close the connection
+						close(client.send)
+						delete(clients, client)
+					}
+				}
+			}
+			h.mutex.RUnlock()
+
+		case notification := <-h.customerBroadcast:
+			h.mutex.RLock()
+			if clients, ok := h.customerClients[notification.CustomerID]; ok {
+				for client := range clients {
+					select {
+					case client.send <- notification:
 					default:
 						// Client send channel is full, close the connection
 						close(client.send)
@@ -126,6 +188,24 @@ func (h *Hub) BroadcastLocation(deliveryID int, location *domain.Location) {
 	h.broadcast <- message
 }
 
+// BroadcastCustomerNotification broadcasts a notification to all clients subscribed to the customer
+func (h *Hub) BroadcastCustomerNotification(customerID int, notificationType, message string, data interface{}) {
+	notification := &NotificationMessage{
+		CustomerID: customerID,
+		Type:       notificationType,
+		Message:    message,
+		Data:       data,
+	}
+	h.customerBroadcast <- notification
+}
+
+// GetConnectionCount returns the current number of active WebSocket connections
+func (h *Hub) GetConnectionCount() int {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return h.connectionCount
+}
+
 // HandleWebSocket handles WebSocket connections for live tracking
 func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Extract delivery ID from URL path
@@ -144,6 +224,20 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Extract and validate JWT token from query parameters
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		http.Error(w, `{"error":"unauthorized","message":"Token required in query parameter"}`, http.StatusUnauthorized)
+		return
+	}
+
+	// Validate token
+	claims, err := h.authService.ValidateToken(r.Context(), token)
+	if err != nil {
+		http.Error(w, `{"error":"unauthorized","message":"Invalid or expired token"}`, http.StatusUnauthorized)
+		return
+	}
+
 	// Upgrade HTTP connection to WebSocket
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -151,13 +245,74 @@ func (h *Hub) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create client
+	// Create client with user information
 	client := &Client{
 		conn:       conn,
 		deliveryID: deliveryID,
-		send:       make(chan *LocationMessage, 256),
+		userID:     claims.UserID,
+		username:   claims.Username,
+		role:       claims.Role,
+		customerID: claims.CustomerID,
+		courierID:  claims.CourierID,
+		clientType: "delivery_tracker",
+		send:       make(chan interface{}, 256),
 		hub:        h,
 	}
+
+	log.Printf("WebSocket authenticated: user %s (%s) tracking delivery %d", claims.Username, claims.Role, deliveryID)
+
+	// Register client
+	client.hub.register <- client
+
+	// Start goroutines for reading and writing
+	go client.writePump()
+	go client.readPump()
+}
+
+// HandleCustomerWebSocket handles WebSocket connections for customer notifications
+func (h *Hub) HandleCustomerWebSocket(w http.ResponseWriter, r *http.Request) {
+	// Extract and validate JWT token from query parameters
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		http.Error(w, `{"error":"unauthorized","message":"Token required in query parameter"}`, http.StatusUnauthorized)
+		return
+	}
+
+	// Validate token
+	claims, err := h.authService.ValidateToken(r.Context(), token)
+	if err != nil {
+		http.Error(w, `{"error":"unauthorized","message":"Invalid or expired token"}`, http.StatusUnauthorized)
+		return
+	}
+
+	// Only customers can subscribe to notifications
+	if claims.Role != "customer" || claims.CustomerID == nil {
+		http.Error(w, `{"error":"forbidden","message":"Only customers can subscribe to notifications"}`, http.StatusForbidden)
+		return
+	}
+
+	// Upgrade HTTP connection to WebSocket
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("Failed to upgrade connection: %v", err)
+		return
+	}
+
+	// Create client with user information
+	client := &Client{
+		conn:       conn,
+		deliveryID: 0, // Not tracking a specific delivery
+		userID:     claims.UserID,
+		username:   claims.Username,
+		role:       claims.Role,
+		customerID: claims.CustomerID,
+		courierID:  claims.CourierID,
+		clientType: "customer_notifications",
+		send:       make(chan interface{}, 256),
+		hub:        h,
+	}
+
+	log.Printf("Customer WebSocket authenticated: user %s (customer %d) subscribed to notifications", claims.Username, *claims.CustomerID)
 
 	// Register client
 	client.hub.register <- client
