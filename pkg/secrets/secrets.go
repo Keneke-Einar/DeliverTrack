@@ -45,7 +45,19 @@ func (v *VaultClient) GetSecret(key string) (string, error) {
 		return "", fmt.Errorf("no secret data found")
 	}
 
-	value, ok := secret.Data[key].(string)
+	// Handle KV v2 (data is nested under "data" key)
+	var data map[string]interface{}
+	if nestedData, ok := secret.Data["data"]; ok {
+		if dataMap, ok := nestedData.(map[string]interface{}); ok {
+			data = dataMap
+		} else {
+			data = secret.Data
+		}
+	} else {
+		data = secret.Data
+	}
+
+	value, ok := data[key].(string)
 	if !ok {
 		return "", fmt.Errorf("secret key %s not found or not a string", key)
 	}

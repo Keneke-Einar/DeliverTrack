@@ -177,14 +177,52 @@ Operations dashboard with real-time visibility into system health and performanc
 git clone https://github.com/yourusername/delivertrack.git
 cd delivertrack
 
-# Start all services with Docker Compose
+# Start all services with a single command
+./run.sh start
+
+# Or manually with Docker Compose
 docker-compose up -d
+```
 
-# Run database migrations
-make migrate
+**Services will be available at:**
+- **Frontend (Customer Portal)**: http://localhost:3000
+- **API Gateway**: http://localhost:8084
+- **Delivery Service**: http://localhost:8080
+- **Tracking Service**: http://localhost:8081
+- **Notification Service**: http://localhost:8082
+- **Analytics Service**: http://localhost:8083
 
-# Start the application
-make run
+**Infrastructure:**
+- **PostgreSQL**: localhost:5433
+- **MongoDB**: localhost:27017
+- **Redis**: localhost:6379
+- **RabbitMQ**: localhost:5672 (Management UI: http://localhost:15672)
+- **Vault**: http://localhost:8200
+
+**Service Management:**
+```bash
+# Start services
+./run.sh start
+
+# Stop services
+./run.sh stop
+
+# Restart services
+./run.sh restart
+
+# Check status
+./run.sh status
+
+# View logs
+./run.sh logs [service-name]
+```
+
+```bash
+# Stop all services
+./stop-all.sh
+
+# Or manually
+docker-compose down
 ```
 
 ### Environment Variables

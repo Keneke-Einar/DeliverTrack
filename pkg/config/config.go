@@ -185,7 +185,7 @@ func setDefaults(serviceName string) {
 	viper.SetDefault("auth.jwt_expiration", "24h")
 	viper.SetDefault("vault.address", "http://localhost:8200")
 	viper.SetDefault("vault.token", "root")
-	viper.SetDefault("vault.path", fmt.Sprintf("secret/%s", serviceName))
+	viper.SetDefault("vault.path", fmt.Sprintf("secret/data/%s", serviceName))
 	viper.SetDefault("logging.level", "info")
 	viper.SetDefault("logging.format", "console")
 	viper.SetDefault("logging.output", "stdout")

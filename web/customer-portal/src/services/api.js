@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Оставляем пустым для работы через прокси
-const API_BASE_URL = '';
+// Use environment variable for API URL, fallback to empty for proxy in development
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
