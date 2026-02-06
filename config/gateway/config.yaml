@@ -1,2 +1,2 @@
 database:
-  url: "postgres://postgres:postgres@localhost:5433/delivertrack?sslmode=disable"
+  url: "postgres://postgres:postgres@localhost:5432/delivertrack?sslmode=disable"

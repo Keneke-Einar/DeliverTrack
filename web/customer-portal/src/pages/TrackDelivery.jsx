@@ -104,8 +104,8 @@ function TrackDelivery() {
   }
 
   // Парсим координаты
-  const pickupPoint = parsePoint(delivery.pickup_location);
-  const deliveryPoint = parsePoint(delivery.delivery_location);
+  const pickupPoint = parsePoint(delivery.PickupLocation);
+  const deliveryPoint = parsePoint(delivery.DeliveryLocation);
   
   // Центр карты (между точками забора и доставки)
   const centerLat = pickupPoint && deliveryPoint 
@@ -132,9 +132,9 @@ function TrackDelivery() {
             ← Назад к доставкам
           </Link>
           <div className="header-title">
-            <h1>Доставка #{delivery.id}</h1>
-            <span className={`badge badge-${delivery.status}`}>
-              {statusText[delivery.status]}
+            <h1>Доставка #{delivery.ID}</h1>
+            <span className={`badge badge-${delivery.Status}`}>
+              {statusText[delivery.Status]}
             </span>
           </div>
         </div>
@@ -155,7 +155,7 @@ function TrackDelivery() {
                   <div>
                     <p className="text-sm text-muted">Откуда</p>
                     <p className="route-address">
-                      {delivery.pickup_location}
+                      {delivery.PickupLocation}
                     </p>
                   </div>
                 </div>
@@ -167,17 +167,17 @@ function TrackDelivery() {
                   <div>
                     <p className="text-sm text-muted">Куда</p>
                     <p className="route-address">
-                      {delivery.delivery_location}
+                      {delivery.DeliveryLocation}
                     </p>
                   </div>
                 </div>
               </div>
 
               {/* Примечания */}
-              {delivery.notes && (
+              {delivery.Notes && (
                 <div className="notes-box">
                   <p className="text-sm text-muted">Примечания:</p>
-                  <p>{delivery.notes}</p>
+                  <p>{delivery.Notes}</p>
                 </div>
               )}
 
@@ -186,15 +186,15 @@ function TrackDelivery() {
                 <div className="date-item">
                   <span className="text-sm text-muted">Создана:</span>
                   <span className="text-sm">
-                    {new Date(delivery.created_at).toLocaleString('ru-RU')}
+                    {new Date(delivery.CreatedAt).toLocaleString('ru-RU')}
                   </span>
                 </div>
                 
-                {delivery.updated_at !== delivery.created_at && (
+                {delivery.UpdatedAt !== delivery.CreatedAt && (
                   <div className="date-item">
                     <span className="text-sm text-muted">Обновлена:</span>
                     <span className="text-sm">
-                      {new Date(delivery.updated_at).toLocaleString('ru-RU')}
+                      {new Date(delivery.UpdatedAt).toLocaleString('ru-RU')}
                     </span>
                   </div>
                 )}

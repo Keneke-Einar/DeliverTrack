@@ -1,5 +1,5 @@
 database:
-  url: "postgres://postgres:postgres@localhost:5433/delivertrack?sslmode=disable"
+  url: "postgres://postgres:postgres@localhost:5432/delivertrack?sslmode=disable"
 mongodb:
   url: "mongodb://admin:admin123@localhost:27017/delivertrack?authSource=admin"
 redis:

@@ -52,7 +52,7 @@ function CreateDelivery() {
       const newDelivery = await createDelivery(deliveryData);
       
       // Перенаправляем на страницу отслеживания
-      navigate(`/track/${newDelivery.id}`);
+      navigate(`/track/${newDelivery.ID}`);
     } catch (err) {
       console.error(err);
       setError(

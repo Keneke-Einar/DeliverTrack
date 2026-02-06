@@ -153,14 +153,14 @@ function Dashboard() {
               </div>
             ) : (
               deliveries.map((delivery) => (
-                <div key={delivery.id} className="delivery-card card fade-in">
+                <div key={delivery.ID} className="delivery-card card fade-in">
                   {/* Номер доставки */}
                   <div className="delivery-header">
                     <span className="delivery-number mono">
-                      #{delivery.id}
+                      #{delivery.ID}
                     </span>
-                    <span className={`badge badge-${delivery.status}`}>
-                      {statusText[delivery.status]}
+                    <span className={`badge badge-${delivery.Status}`}>
+                      {statusText[delivery.Status]}
                     </span>
                   </div>
 
@@ -172,7 +172,7 @@ function Dashboard() {
                         <div>
                           <p className="text-sm text-muted">Откуда</p>
                           <p className="route-address">
-                            {delivery.pickup_location || 'Адрес забора'}
+                            {delivery.PickupLocation || 'Адрес забора'}
                           </p>
                         </div>
                       </div>
@@ -184,28 +184,43 @@ function Dashboard() {
                         <div>
                           <p className="text-sm text-muted">Куда</p>
                           <p className="route-address">
-                            {delivery.delivery_location || 'Адрес доставки'}
+                            {delivery.DeliveryLocation || 'Адрес доставки'}
                           </p>
                         </div>
                       </div>
                     </div>
 
                     {/* Примечания */}
-                    {delivery.notes && (
+                    {delivery.Notes && (
                       <p className="delivery-notes">
-                        <strong>Примечание:</strong> {delivery.notes}
+                        <strong>Примечание:</strong> {delivery.Notes}
                       </p>
                     )}
 
                     {/* Дата */}
                     <p className="text-sm text-muted">
-                      Создана: {new Date(delivery.created_at).toLocaleDateString('ru-RU')}
+                      Создана: {(() => {
+                        try {
+                          const date = new Date(delivery.CreatedAt);
+                          return isNaN(date.getTime()) 
+                            ? 'Неверная дата'
+                            : date.toLocaleDateString('ru-RU', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              });
+                        } catch (e) {
+                          return 'Неверная дата';
+                        }
+                      })()}
                     </p>
                   </div>
 
                   {/* Кнопка отслеживания */}
                   <Link 
-                    to={`/track/${delivery.id}`} 
+                    to={`/track/${delivery.ID}`} 
                     className="btn btn-primary btn-sm"
                   >
                     <span>🗺️</span>
