@@ -1,0 +1,244 @@
+/* СТИЛИ ДЛЯ СТРАНИЦЫ ОТСЛЕЖИВАНИЯ */
+
+.track-delivery-page {
+    min-height: 100vh;
+    background: var(--bg-secondary);
+  }
+  
+  .header-title {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .header-title h1 {
+    margin: 0;
+  }
+  
+  /* === КОНТЕНТ === */
+  
+  .track-content {
+    padding: 2rem 0;
+  }
+  
+  .track-layout {
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    gap: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+  
+  /* === БОКОВАЯ ПАНЕЛЬ === */
+  
+  .track-sidebar {
+    height: fit-content;
+    position: sticky;
+    top: 2rem;
+  }
+  
+  .info-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  .info-card h3 {
+    margin: 0;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border);
+  }
+  
+  .info-card h4 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text-secondary);
+  }
+  
+  /* === МАРШРУТ === */
+  
+  .route-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .route-point {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .route-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+  }
+  
+  .route-address {
+    font-weight: 500;
+    color: var(--text);
+    word-break: break-word;
+  }
+  
+  .route-line {
+    width: 2px;
+    height: 30px;
+    background: var(--border);
+    margin-left: 1rem;
+  }
+  
+  /* === ПРИМЕЧАНИЯ === */
+  
+  .notes-box {
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--primary);
+  }
+  
+  .notes-box p:last-child {
+    margin: 0;
+  }
+  
+  /* === ДАТЫ === */
+  
+  .dates-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+  }
+  
+  .date-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  /* === ИСТОРИЯ ПЕРЕМЕЩЕНИЙ === */
+  
+  .track-history {
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+  }
+  
+  .track-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+  
+  .track-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.75rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--primary);
+  }
+  
+  .track-time {
+    font-weight: 600;
+    color: var(--primary);
+    font-size: 0.875rem;
+  }
+  
+  .track-coords {
+    font-size: 0.75rem;
+  }
+  
+  /* === КАРТА === */
+  
+  .track-map-container {
+    height: calc(100vh - 180px);
+    min-height: 500px;
+  }
+  
+  .map-wrapper {
+    height: 100%;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border);
+  }
+  
+  /* Стили для Leaflet маркеров */
+  .leaflet-popup-content-wrapper {
+    border-radius: var(--radius-sm);
+  }
+  
+  .leaflet-popup-content {
+    font-family: 'Outfit', sans-serif;
+    margin: 0.75rem;
+  }
+  
+  /* Плейсхолдер если карта не загрузилась */
+  .map-placeholder {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+  
+  /* === СТРАНИЦЫ ЗАГРУЗКИ И ОШИБОК === */
+  
+  .loading-page,
+  .error-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .error-content {
+    text-align: center;
+  }
+  
+  .error-icon {
+    font-size: 4rem;
+    display: block;
+    margin-bottom: 1rem;
+  }
+  
+  /* === АДАПТИВНОСТЬ === */
+  
+  @media (max-width: 1024px) {
+    .track-layout {
+      grid-template-columns: 1fr;
+    }
+    
+    .track-sidebar {
+      position: static;
+    }
+    
+    .track-map-container {
+      height: 500px;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .track-layout {
+      padding: 0 1rem;
+    }
+    
+    .track-map-container {
+      height: 400px;
+    }
+    
+    .header-title {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+  }
