@@ -52,6 +52,8 @@
 - [x] Customer: create/view own deliveries, view tracking
 - [x] Courier: update location/status, view assigned deliveries
 - [x] Admin: full system access and management
+- [x] WebSocket connections require JWT authentication
+- [x] Customer notification WebSockets restricted to customer role
 
 ## 🚪 API Gateway Implementation
 
@@ -77,10 +79,12 @@
 
 ### Tracking Service APIs
 - [x] `POST /locations` - Submit courier location updates
-- [x] `WS /ws/track/:delivery_id` - Real-time tracking WebSocket
+- [x] `WS /ws/deliveries/{id}/track` - Real-time tracking WebSocket (authenticated)
+- [x] `WS /ws/notifications` - Customer notification WebSocket
 - [x] `GET /deliveries/{id}/track` - Get delivery tracking history
 - [x] `GET /deliveries/{id}/location` - Get current delivery location
 - [x] `GET /couriers/{id}/location` - Get courier location
+- [x] `GET /metrics` - WebSocket connection count metrics
 - [x] Implement ETA calculation using distance algorithms
 - [x] Add location validation and geofencing checks
 
@@ -88,7 +92,7 @@
 - [x] `POST /notifications` - Send notification (internal)
 - [x] `GET /notifications` - Get user notifications
 - [x] `PUT /notifications/{id}/read` - Mark notification as read
-- [ ] Implement WebSocket notifications to customers
+- [x] Implement WebSocket notifications to customers
 - [ ] Add SMS/email notifications for status updates
 
 ### Analytics Service APIs
@@ -127,6 +131,8 @@
 - [x] Add heartbeat mechanism for connection health
 - [x] Implement connection cleanup on disconnect
 - [x] Add WebSocket authentication and authorization
+- [x] Add WebSocket connections count metric
+- [x] Implement WebSocket notifications to customers
 
 ### Geofencing System
 - [ ] Implement `$geoWithin` queries for zone detection
@@ -171,7 +177,7 @@
 - [ ] Implement Prometheus client in all services
 - [ ] Add active deliveries count metric
 - [ ] Add average delivery time metric
-- [ ] Add WebSocket connections count metric
+- [x] Add WebSocket connections count metric
 - [ ] Add location update frequency metric
 - [ ] Add REST API response times metrics
 - [ ] Add gRPC call latency and success rate metrics
@@ -201,6 +207,8 @@
 - [x] Implement comprehensive unit tests for all packages
 - [x] Add integration tests for service interactions
 - [x] Implement end-to-end testing scenarios
+- [x] Add WebSocket authentication testing
+- [x] Update tests for new WebSocket features
 - [ ] Add performance and load testing framework
 - [ ] Implement concurrent request load testing
 - [ ] Add WebSocket connection testing
@@ -328,8 +336,11 @@
 - Event-driven messaging
 
 ### Phase 2: Real-Time Features (🟡 In Progress)
-- WebSocket implementation
-- Location tracking and broadcasting
+- WebSocket implementation ✅
+- Location tracking and broadcasting ✅
+- WebSocket authentication and authorization ✅
+- Customer notification WebSockets ✅
+- Connection count metrics ✅
 - Geofencing system
 - Advanced notification features
 
@@ -349,5 +360,5 @@
 ---
 
 **Total Estimated Development Time:** 2-3 weeks
-**Current Completion:** ~75%
+**Current Completion:** ~80%
 **Remaining Work:** Advanced features (including web interfaces), monitoring, and optimization
