@@ -375,7 +375,7 @@ document.addEventListener('alpine:init', () => {
         async init() {
             try {
                 var auth = Alpine.store('auth');
-                var data = await api.get('/api/notification/notifications?user_id=' + auth.userId);
+                var data = await api.get('/api/notification/notifications');
                 this.notifications = Array.isArray(data) ? data : [];
             } catch (e) {
                 Alpine.store('toast').error('Failed to load notifications');

@@ -49,6 +49,11 @@ case "${1:-start}" in
         echo "  - Redis: localhost:6379"
         echo "  - RabbitMQ: localhost:5672 (Management: localhost:15672)"
         ;;
+    build)
+        print_info "Building all DeliverTrack services..."
+        docker-compose up --build -d
+        print_success "Services built!"
+        ;;
     stop)
         print_info "Stopping all DeliverTrack services..."
         docker-compose down
@@ -76,6 +81,7 @@ case "${1:-start}" in
         echo ""
         echo "Commands:"
         echo "  start   - Start all services (default)"
+        echo "  build   - Build all services"
         echo "  stop    - Stop all services"
         echo "  restart - Restart all services"
         echo "  status  - Show service status"

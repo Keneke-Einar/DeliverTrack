@@ -193,33 +193,23 @@
                     </div>
                 </template>
             </nav>
-
-            <!-- User / Logout -->
-            <div class="px-3 py-4 border-t border-gray-800">
-                <div class="flex items-center gap-3 px-3 mb-3">
-                    <div class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-bold"
-                         x-text="$store.auth.username.charAt(0).toUpperCase()"></div>
-                    <div class="min-w-0">
-                        <p class="text-sm font-medium truncate" x-text="$store.auth.username"></p>
-                        <p class="text-xs text-gray-400 capitalize" x-text="$store.auth.role"></p>
-                    </div>
-                </div>
-                <button @click="$store.auth.clear(); $store.router.resolve()"
-                        class="sidebar-link w-full text-red-400 hover:text-red-300 hover:bg-red-900/30">
-                    <span>🚪</span> Sign Out
-                </button>
-            </div>
         </aside>
 
         <!-- ── Main Content Area ──────────── -->
-        <main class="flex-1 overflow-y-auto">
+        <main class="flex-1 overflow-y-auto pt-16">
             <!-- Top Bar -->
-            <header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+            <header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between fixed top-0 left-64 right-0 z-10">
                 <h2 class="text-lg font-semibold text-gray-800 capitalize"
                     x-text="$store.router.page.replace(/-/g, ' › ')"></h2>
                 <div class="flex items-center gap-3 text-sm text-gray-500">
-                    <span class="pulse-dot"></span>
-                    <span>Connected</span>
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold text-white"
+                             x-text="$store.auth.username.charAt(0).toUpperCase()"></div>
+                        <span x-text="$store.auth.username"></span>
+                    </div>
+                    <button @click="$store.auth.clear(); $store.router.resolve()" class="text-red-400 hover:text-red-300 text-sm font-medium">
+                        Sign Out
+                    </button>
                 </div>
             </header>
 

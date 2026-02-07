@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -286,7 +287,7 @@ func (h *Hub) HandleCustomerWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Only customers can subscribe to notifications
-	if claims.Role != "customer" || claims.CustomerID == nil {
+	if claims.Role != "customer" {
 		http.Error(w, `{"error":"forbidden","message":"Only customers can subscribe to notifications"}`, http.StatusForbidden)
 		return
 	}
@@ -312,7 +313,11 @@ func (h *Hub) HandleCustomerWebSocket(w http.ResponseWriter, r *http.Request) {
 		hub:        h,
 	}
 
-	log.Printf("Customer WebSocket authenticated: user %s (customer %d) subscribed to notifications", claims.Username, *claims.CustomerID)
+	customerIDStr := "N/A"
+	if claims.CustomerID != nil {
+		customerIDStr = fmt.Sprintf("%d", *claims.CustomerID)
+	}
+	log.Printf("Customer WebSocket authenticated: user %s (customer %s) subscribed to notifications", claims.Username, customerIDStr)
 
 	// Register client
 	client.hub.register <- client

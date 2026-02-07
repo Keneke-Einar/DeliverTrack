@@ -3,7 +3,6 @@ package adapters
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/Keneke-Einar/delivertrack/internal/notification/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/notification/ports"
@@ -65,15 +64,16 @@ func (h *HTTPHandler) GetNotifications(w http.ResponseWriter, r *http.Request) {
 	// Extract user and trace context
 	traceCtx := httputil.ExtractTraceContext(r, "notification-service", "get_notifications_http")
 
-	userIDStr := r.URL.Query().Get("user_id")
-	if userIDStr == "" {
-		httputil.SendErrorResponse(w, "user_id required", http.StatusBadRequest)
+	// Get user ID from context (set by auth middleware)
+	userIDValue := r.Context().Value("user_id")
+	if userIDValue == nil {
+		httputil.SendErrorResponse(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	userID, err := strconv.Atoi(userIDStr)
-	if err != nil {
-		httputil.SendErrorResponse(w, "Invalid user_id", http.StatusBadRequest)
+	userID, ok := userIDValue.(int)
+	if !ok {
+		httputil.SendErrorResponse(w, "Invalid user context", http.StatusInternalServerError)
 		return
 	}
 

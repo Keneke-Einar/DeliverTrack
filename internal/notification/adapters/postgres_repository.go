@@ -112,7 +112,7 @@ func (r *PostgresNotificationRepository) GetByUserID(ctx context.Context, userID
 	}
 	defer rows.Close()
 
-	var notifications []*domain.Notification
+	notifications := make([]*domain.Notification, 0)
 	for rows.Next() {
 		var notification domain.Notification
 		var deliveryID sql.NullInt64
