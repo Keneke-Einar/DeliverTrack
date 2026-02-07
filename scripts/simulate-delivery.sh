@@ -67,8 +67,8 @@ DEL_RESP=$(curl -sf "${BASE_URL}/api/delivery/deliveries" \
   -H "Authorization: Bearer ${CUST_TOKEN}" \
   -d "{
     \"customer_id\": ${CUST_ID},
-    \"pickup_location\": \"(${PICKUP_LNG},${PICKUP_LAT})\",
-    \"delivery_location\": \"(${DROPOFF_LNG},${DROPOFF_LAT})\",
+    \"pickup_location\": \"Times Square, New York, NY\",
+    \"delivery_location\": \"Central Park, New York, NY\",
     \"notes\": \"Live tracking demo\"
   }")
 DEL_ID=$(echo "$DEL_RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('ID') or json.load(sys.stdin).get('id'))" 2>/dev/null || echo "$DEL_RESP" | grep -oP '"(?:ID|id)":\s*\K\d+' | head -1)
