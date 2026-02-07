@@ -104,10 +104,8 @@ func (d *Delivery) CanBeViewedBy(role string, customerID *int, courierID *int) b
 		if d.Status == StatusPending {
 			return true
 		}
-		// Couriers can view assigned/in-transit deliveries
-		if d.Status == StatusAssigned || d.Status == StatusInTransit {
-			return true
-		}
+		// Note: Couriers cannot view deliveries assigned to other couriers
+		return false
 	}
 	return false
 }

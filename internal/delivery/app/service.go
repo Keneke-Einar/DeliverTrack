@@ -94,6 +94,9 @@ func (s *DeliveryService) CreateDelivery(ctx context.Context, req ports.CreateDe
 
 	// Set optional fields
 	delivery.CourierID = req.CourierID
+	if req.CourierID != nil {
+		delivery.Status = domain.StatusAssigned
+	}
 	delivery.Notes = req.Notes
 
 	if req.ScheduledDate != nil && *req.ScheduledDate != "" {
