@@ -45,7 +45,7 @@ func (s *AuthService) Register(
 		return nil, err
 	}
 
-	// Persist user
+	// Persist user (also auto-creates customer/courier profile if needed)
 	if err := s.userRepo.Create(ctx, user); err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}

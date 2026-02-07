@@ -101,7 +101,8 @@ func main() {
 	mux.HandleFunc("/api/auth/register", authHandler.Register)
 
 	// Protected routes - delivery endpoints
-	mux.HandleFunc("/api/delivery/deliveries", func(w http.ResponseWriter, r *http.Request) {
+	// Routes use bare paths (gateway strips /api/delivery prefix before proxying)
+	mux.HandleFunc("/deliveries", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			authMiddleware(authService, deliveryHTTPHandler.ListDeliveries)(w, r)
 		} else if r.Method == http.MethodPost {
@@ -110,20 +111,19 @@ func main() {
 			http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
 		}
 	})
-	mux.HandleFunc("/api/delivery/deliveries/", func(w http.ResponseWriter, r *http.Request) {
-		path := strings.TrimPrefix(r.URL.Path, "/api/delivery/deliveries/")
+	mux.HandleFunc("/deliveries/", func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/deliveries/")
 		if path == "" {
-			// This shouldn't happen since /api/delivery/deliveries is handled above
 			http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
 			return
 		}
 
 		// Check if path ends with /status
 		if strings.HasSuffix(path, "/status") {
-			// Handle PUT /api/delivery/deliveries/:id/status
+			// Handle PUT /deliveries/:id/status
 			authMiddleware(authService, deliveryHTTPHandler.UpdateDeliveryStatus)(w, r)
 		} else {
-			// Handle GET /api/delivery/deliveries/:id
+			// Handle GET /deliveries/:id
 			authMiddleware(authService, deliveryHTTPHandler.GetDelivery)(w, r)
 		}
 	})

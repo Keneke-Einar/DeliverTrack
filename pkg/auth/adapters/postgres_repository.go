@@ -17,8 +17,38 @@ func NewPostgresUserRepository(db *sql.DB) *PostgresUserRepository {
 	return &PostgresUserRepository{db: db}
 }
 
-// Create stores a new user
+// Create stores a new user, auto-creating a customer/courier profile if needed
 func (r *PostgresUserRepository) Create(ctx context.Context, user *domain.User) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// If role is customer/courier and no linked profile, create one
+	if user.Role == "customer" && user.CustomerID == nil {
+		var custID int
+		err := tx.QueryRowContext(ctx,
+			`INSERT INTO customers (name, address, contact, email) VALUES ($1, $2, $3, $4) RETURNING id`,
+			user.Username, "N/A", "N/A", user.Email,
+		).Scan(&custID)
+		if err != nil {
+			return err
+		}
+		user.CustomerID = &custID
+	}
+	if user.Role == "courier" && user.CourierID == nil {
+		var courID int
+		err := tx.QueryRowContext(ctx,
+			`INSERT INTO couriers (name, vehicle_type, phone) VALUES ($1, $2, $3) RETURNING id`,
+			user.Username, "bicycle", "N/A",
+		).Scan(&courID)
+		if err != nil {
+			return err
+		}
+		user.CourierID = &courID
+	}
+
 	query := `
 		INSERT INTO users (username, email, password_hash, role, customer_id, courier_id, active)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -33,7 +63,7 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user *domain.User) 
 		courierID = sql.NullInt64{Int64: int64(*user.CourierID), Valid: true}
 	}
 
-	err := r.db.QueryRowContext(
+	err = tx.QueryRowContext(
 		ctx,
 		query,
 		user.Username,
@@ -44,8 +74,11 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user *domain.User) 
 		courierID,
 		user.Active,
 	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
+	if err != nil {
+		return err
+	}
 
-	return err
+	return tx.Commit()
 }
 
 // GetByID retrieves a user by ID
