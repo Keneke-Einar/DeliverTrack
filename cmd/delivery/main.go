@@ -15,6 +15,7 @@ import (
 	authAdapters "github.com/Keneke-Einar/delivertrack/pkg/auth/adapters"
 	authApp "github.com/Keneke-Einar/delivertrack/pkg/auth/app"
 	authPorts "github.com/Keneke-Einar/delivertrack/pkg/auth/ports"
+	"github.com/Keneke-Einar/delivertrack/pkg/geocoding"
 
 	"github.com/Keneke-Einar/delivertrack/pkg/config"
 	"github.com/Keneke-Einar/delivertrack/pkg/grpcinterceptors"
@@ -79,6 +80,9 @@ func main() {
 	// Delivery layer
 	deliveryRepo := deliveryAdapters.NewPostgresDeliveryRepository(db.DB)
 
+	// Initialize geocoding service
+	geocodingSvc := geocoding.NewHTTPGeocodingService(lg)
+
 	// Initialize RabbitMQ publisher for event publishing
 	rabbitMQURL := cfg.RabbitMQ.URL
 	publisher, err := messaging.NewRabbitMQPublisher(rabbitMQURL, lg)
@@ -87,8 +91,9 @@ func main() {
 	}
 	defer publisher.Close()
 
-	deliveryService := deliveryApp.NewDeliveryService(deliveryRepo, publisher, deliveryClient, lg)
+	deliveryService := deliveryApp.NewDeliveryService(deliveryRepo, publisher, deliveryClient, geocodingSvc, lg)
 	deliveryHTTPHandler := deliveryAdapters.NewHTTPHandler(deliveryService)
+	geocodingHTTPHandler := geocoding.NewHTTPHandler(geocodingSvc)
 	deliveryGRPCHandler := deliveryAdapters.NewGRPCHandler(deliveryService)
 
 	// Setup HTTP router with middleware
@@ -96,9 +101,34 @@ func main() {
 
 	// Public routes
 	mux.HandleFunc("/health", healthHandler)
-	mux.HandleFunc("/", rootHandler)
 	mux.HandleFunc("/api/auth/login", authHandler.Login)
 	mux.HandleFunc("/api/auth/register", authHandler.Register)
+
+	// Geocoding routes (public - no auth required)
+	mux.HandleFunc("/geocode/forward", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+		geocodingHTTPHandler.ForwardGeocode(w, r)
+	})
+	mux.HandleFunc("/geocode/reverse", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+		geocodingHTTPHandler.ReverseGeocode(w, r)
+	})
+	mux.HandleFunc("/geocode/autocomplete", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+		geocodingHTTPHandler.Autocomplete(w, r)
+	})
+
+	// Catch-all root handler (must be last)
+	mux.HandleFunc("/", rootHandler)
 
 	// Protected routes - delivery endpoints
 	// Routes use bare paths (gateway strips /api/delivery prefix before proxying)
@@ -140,7 +170,9 @@ func main() {
 			zap.Strings("endpoints", []string{
 				"POST /login", "POST /register",
 				"POST /deliveries", "GET /deliveries/:id",
-				"PUT /deliveries/:id/status", "GET /deliveries?status=xxx"}))
+				"PUT /deliveries/:id/status", "GET /deliveries?status=xxx",
+				"POST /geocode/forward", "POST /geocode/reverse", "GET /geocode/autocomplete",
+			}))
 
 		if err := http.ListenAndServe(":"+port, httpHandler); err != nil {
 			lg.Fatal("Failed to start HTTP server", zap.Error(err))
@@ -194,6 +226,10 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, `{"service":"delivery","version":"%s"}`, version)

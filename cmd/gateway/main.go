@@ -121,6 +121,9 @@ func main() {
 	mux.Handle("/api/notification/", gateway.authMiddleware(limiter, gateway.proxyHandler("notification", notificationURL)))
 	mux.Handle("/api/analytics/", gateway.authMiddleware(limiter, gateway.proxyHandler("analytics", analyticsURL)))
 
+	// Public geocoding routes (no auth required)
+	mux.Handle("/api/geocode/", gateway.geocodeProxyHandler(deliveryURL))
+
 	// Auth routes (public)
 	authHandler := authAdapters.NewHTTPHandler(gateway.authService, cfg.Auth.JWTExpiration)
 	mux.HandleFunc("/login", authHandler.Login)
@@ -145,6 +148,22 @@ func (g *Gateway) proxyHandler(serviceName, targetURL string) http.HandlerFunc {
 		// e.g., /api/delivery/deliveries/ becomes /deliveries/
 		prefix := "/api/" + serviceName
 		r.URL.Path = strings.TrimPrefix(r.URL.Path, prefix)
+		r.URL.Host = target.Host
+		r.URL.Scheme = target.Scheme
+		r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
+
+		proxy.ServeHTTP(w, r)
+	}
+}
+
+func (g *Gateway) geocodeProxyHandler(targetURL string) http.HandlerFunc {
+	target, _ := url.Parse(targetURL)
+	proxy := httputil.NewSingleHostReverseProxy(target)
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Rewrite path: strip /api/geocode prefix for geocoding routes
+		// e.g., /api/geocode/forward becomes /geocode/forward
+		r.URL.Path = strings.TrimPrefix(r.URL.Path, "/api")
 		r.URL.Host = target.Host
 		r.URL.Scheme = target.Scheme
 		r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))

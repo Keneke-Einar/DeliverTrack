@@ -3,10 +3,12 @@ package app
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/Keneke-Einar/delivertrack/internal/delivery/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/delivery/ports"
+	"github.com/Keneke-Einar/delivertrack/pkg/geocoding"
 	"github.com/Keneke-Einar/delivertrack/pkg/logger"
 	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/pkg/resilience"
@@ -20,18 +22,48 @@ type DeliveryService struct {
 	publisher      messaging.Publisher
 	deliveryClient delivery.DeliveryServiceClient
 	deliveryCB     *resilience.CircuitBreaker
+	geocodingSvc   geocoding.GeocodingService
 	logger         *logger.Logger
 }
 
 // NewDeliveryService creates a new delivery service
-func NewDeliveryService(repo ports.DeliveryRepository, publisher messaging.Publisher, deliveryClient delivery.DeliveryServiceClient, logger *logger.Logger) *DeliveryService {
+func NewDeliveryService(repo ports.DeliveryRepository, publisher messaging.Publisher, deliveryClient delivery.DeliveryServiceClient, geocodingSvc geocoding.GeocodingService, logger *logger.Logger) *DeliveryService {
 	return &DeliveryService{
 		repo:           repo,
 		publisher:      publisher,
 		deliveryClient: deliveryClient,
 		deliveryCB:     resilience.NewCircuitBreaker("delivery", 3, 10*time.Second),
+		geocodingSvc:   geocodingSvc,
 		logger:         logger,
 	}
+}
+
+// geocodeLocation converts address to coordinates if needed
+func (s *DeliveryService) geocodeLocation(ctx context.Context, location string) (string, error) {
+	// Check if it's already coordinates (format: (lng,lat))
+	coordRegex := regexp.MustCompile(`^\s*\(\s*[-+]?\d*\.?\d+\s*,\s*[-+]?\d*\.?\d+\s*\)\s*$`)
+	if coordRegex.MatchString(location) {
+		return location, nil // Already coordinates
+	}
+
+	// Try to geocode the address
+	if s.geocodingSvc != nil {
+		result, err := s.geocodingSvc.ForwardGeocode(ctx, location)
+		if err != nil {
+			s.logger.WarnWithFields(ctx, "Failed to geocode address, using as-is",
+				zap.String("address", location), zap.Error(err))
+			return location, nil // Keep original address if geocoding fails
+		}
+
+		// Return coordinates in the expected format
+		coordStr := fmt.Sprintf("(%f,%f)", result.Longitude, result.Latitude)
+		s.logger.InfoWithFields(ctx, "Geocoded address to coordinates",
+			zap.String("address", location), zap.String("coordinates", coordStr))
+		return coordStr, nil
+	}
+
+	// No geocoding service available, keep as-is
+	return location, nil
 }
 
 // CreateDelivery creates a new delivery
@@ -40,8 +72,19 @@ func (s *DeliveryService) CreateDelivery(ctx context.Context, req ports.CreateDe
 		zap.Int("customer_id", req.CustomerID),
 		zap.String("method", "CreateDelivery"))
 
+	// Geocode locations if they're addresses
+	pickupLocation, err := s.geocodeLocation(ctx, req.PickupLocation)
+	if err != nil {
+		return nil, fmt.Errorf("failed to geocode pickup location: %w", err)
+	}
+
+	deliveryLocation, err := s.geocodeLocation(ctx, req.DeliveryLocation)
+	if err != nil {
+		return nil, fmt.Errorf("failed to geocode delivery location: %w", err)
+	}
+
 	// Create domain entity with validation
-	delivery, err := domain.NewDelivery(req.CustomerID, req.PickupLocation, req.DeliveryLocation)
+	delivery, err := domain.NewDelivery(req.CustomerID, pickupLocation, deliveryLocation)
 	if err != nil {
 		s.logger.ErrorWithFields(ctx, "Failed to create delivery domain entity",
 			zap.Int("customer_id", req.CustomerID),

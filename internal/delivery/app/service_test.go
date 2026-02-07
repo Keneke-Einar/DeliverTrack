@@ -3,11 +3,13 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/Keneke-Einar/delivertrack/internal/delivery/domain"
 	"github.com/Keneke-Einar/delivertrack/internal/delivery/ports"
+	"github.com/Keneke-Einar/delivertrack/pkg/geocoding"
 	"github.com/Keneke-Einar/delivertrack/pkg/logger"
 	"github.com/Keneke-Einar/delivertrack/pkg/messaging"
 	"github.com/Keneke-Einar/delivertrack/proto/analytics"
@@ -291,54 +293,98 @@ func (m *MockDeliveryClient) ConfirmDelivery(ctx context.Context, in *delivery.C
 	return &delivery.ConfirmDeliveryResponse{}, nil
 }
 
+// MockGeocodingService is a mock implementation of GeocodingService for testing
+type MockGeocodingService struct{}
+
+func (m *MockGeocodingService) ForwardGeocode(ctx context.Context, address string) (*geocoding.GeocodeResult, error) {
+	if address == "" {
+		return nil, fmt.Errorf("empty address")
+	}
+	// Return mock coordinates for any address
+	return &geocoding.GeocodeResult{
+		Latitude:  40.7128,
+		Longitude: -74.0060,
+		Address:   address,
+		City:      "New York",
+		State:     "NY",
+		Country:   "USA",
+		ZipCode:   "10001",
+	}, nil
+}
+
+func (m *MockGeocodingService) ReverseGeocode(ctx context.Context, lat, lng float64) (*geocoding.ReverseGeocodeResult, error) {
+	return &geocoding.ReverseGeocodeResult{
+		Address: "123 Mock Street, New York, NY 10001",
+		City:    "New York",
+		State:   "NY",
+		Country: "USA",
+		ZipCode: "10001",
+	}, nil
+}
+
+func (m *MockGeocodingService) Autocomplete(ctx context.Context, query string) ([]geocoding.AutocompleteResult, error) {
+	return []geocoding.AutocompleteResult{
+		{Text: query + " St, New York, NY", Description: "Street Address"},
+		{Text: query + " Ave, New York, NY", Description: "Avenue Address"},
+	}, nil
+}
+
 func TestDeliveryService_CreateDelivery(t *testing.T) {
 	tests := []struct {
-		name           string
-		customerID     int
-		courierID      *int
-		pickupLoc      string
-		deliveryLoc    string
-		notes          string
-		scheduledDate  *string
-		mockCreateErr  error
-		expectError    bool
-		expectedStatus string
+		name             string
+		customerID       int
+		courierID        *int
+		pickupLoc        string
+		deliveryLoc      string
+		notes            string
+		scheduledDate    *string
+		mockCreateErr    error
+		expectError      bool
+		expectedStatus   string
+		expectedPickup   string
+		expectedDelivery string
 	}{
 		{
-			name:           "successful creation",
-			customerID:     1,
-			courierID:      nil,
-			pickupLoc:      "123 Main St",
-			deliveryLoc:    "456 Oak Ave",
-			notes:          "Handle with care",
-			scheduledDate:  nil,
-			mockCreateErr:  nil,
-			expectError:    false,
-			expectedStatus: domain.StatusPending,
+			name:             "successful creation",
+			customerID:       1,
+			courierID:        nil,
+			pickupLoc:        "123 Main St",
+			deliveryLoc:      "456 Oak Ave",
+			notes:            "Handle with care",
+			scheduledDate:    nil,
+			mockCreateErr:    nil,
+			expectError:      false,
+			expectedStatus:   domain.StatusPending,
+			expectedPickup:   "(-74.006000,40.712800)",
+			expectedDelivery: "(-74.006000,40.712800)",
 		},
 		{
-			name:           "creation with courier",
-			customerID:     1,
-			courierID:      func() *int { i := 2; return &i }(),
-			pickupLoc:      "123 Main St",
-			deliveryLoc:    "456 Oak Ave",
-			notes:          "",
-			scheduledDate:  nil,
-			mockCreateErr:  nil,
-			expectError:    false,
-			expectedStatus: domain.StatusPending,
+			name:             "creation with courier",
+			customerID:       1,
+			courierID:        func() *int { i := 2; return &i }(),
+			pickupLoc:        "123 Main St",
+			deliveryLoc:      "456 Oak Ave",
+			notes:            "",
+			scheduledDate:    nil,
+			mockCreateErr:    nil,
+			expectError:      false,
+			expectedStatus:   domain.StatusPending,
+			expectedPickup:   "(-74.006000,40.712800)",
+			expectedDelivery: "(-74.006000,40.712800)",
 		},
 		{
-			name:           "creation with scheduled date",
-			customerID:     1,
-			courierID:      nil,
-			pickupLoc:      "123 Main St",
-			deliveryLoc:    "456 Oak Ave",
-			notes:          "",
-			scheduledDate:  func() *string { s := "2024-01-01T10:00:00Z"; return &s }(),
-			mockCreateErr:  nil,
-			expectError:    false,
-			expectedStatus: domain.StatusPending,
+			name:             "creation with scheduled date",
+			customerID:       1,
+			courierID:        nil,
+			pickupLoc:        "123 Main St",
+			deliveryLoc:      "456 Oak Ave",
+			notes:            "",
+			scheduledDate:    func() *string { s := "2024-01-01T10:00:00Z"; return &s }(),
+			mockCreateErr:    nil,
+			expectError:      false,
+			expectedStatus:   domain.StatusPending,
+			expectedPickup:   "(-74.006000,40.712800)",
+			expectedDelivery: "(-74.006000,40.712800)",
 		},
 		{
 			name:          "invalid customer ID",
@@ -392,8 +438,9 @@ func TestDeliveryService_CreateDelivery(t *testing.T) {
 			mockRepo.SetCreateError(tt.mockCreateErr)
 			mockPublisher := NewMockPublisher()
 			mockDeliveryClient := &MockDeliveryClient{}
+			mockGeocodingSvc := &MockGeocodingService{}
 			testLogger := createTestLogger(t)
-			service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient, testLogger)
+			service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient, mockGeocodingSvc, testLogger)
 
 			delivery, err := service.CreateDelivery(context.Background(), ports.CreateDeliveryRequest{
 				CustomerID:       tt.customerID,
@@ -429,12 +476,12 @@ func TestDeliveryService_CreateDelivery(t *testing.T) {
 				t.Errorf("expected customer ID %d, got %d", tt.customerID, delivery.CustomerID)
 			}
 
-			if delivery.PickupLocation != tt.pickupLoc {
-				t.Errorf("expected pickup location %s, got %s", tt.pickupLoc, delivery.PickupLocation)
+			if delivery.PickupLocation != tt.expectedPickup {
+				t.Errorf("expected pickup location %s, got %s", tt.expectedPickup, delivery.PickupLocation)
 			}
 
-			if delivery.DeliveryLocation != tt.deliveryLoc {
-				t.Errorf("expected delivery location %s, got %s", tt.deliveryLoc, delivery.DeliveryLocation)
+			if delivery.DeliveryLocation != tt.expectedDelivery {
+				t.Errorf("expected delivery location %s, got %s", tt.expectedDelivery, delivery.DeliveryLocation)
 			}
 
 			if tt.courierID != nil {
@@ -454,8 +501,9 @@ func TestDeliveryService_GetDelivery(t *testing.T) {
 	mockRepo := NewMockDeliveryRepository()
 	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
+	mockGeocodingSvc := &MockGeocodingService{}
 	testLogger := createTestLogger(t)
-	service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient, testLogger)
+	service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient, mockGeocodingSvc, testLogger)
 
 	// Create a test delivery
 	delivery := &domain.Delivery{
@@ -592,8 +640,9 @@ func TestDeliveryService_ListDeliveries(t *testing.T) {
 	mockRepo := NewMockDeliveryRepository()
 	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
+	mockGeocodingSvc := &MockGeocodingService{}
 	testLogger := createTestLogger(t)
-	service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient, testLogger)
+	service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient, mockGeocodingSvc, testLogger)
 
 	// Create test deliveries
 	deliveries := []*domain.Delivery{
@@ -716,8 +765,9 @@ func TestDeliveryService_UpdateDeliveryStatus(t *testing.T) {
 	mockRepo := NewMockDeliveryRepository()
 	mockPublisher := NewMockPublisher()
 	mockDeliveryClient := &MockDeliveryClient{}
+	mockGeocodingSvc := &MockGeocodingService{}
 	testLogger := createTestLogger(t)
-	service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient, testLogger)
+	service := NewDeliveryService(mockRepo, mockPublisher, mockDeliveryClient, mockGeocodingSvc, testLogger)
 
 	// Create a test delivery
 	delivery := &domain.Delivery{

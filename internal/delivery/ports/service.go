@@ -17,8 +17,8 @@ type AuthContext struct {
 type CreateDeliveryRequest struct {
 	CustomerID       int     `json:"customer_id"`
 	CourierID        *int    `json:"courier_id,omitempty"`
-	PickupLocation   string  `json:"pickup_location"`
-	DeliveryLocation string  `json:"delivery_location"`
+	PickupLocation   string  `json:"pickup_location"`   // Can be coordinates "(lng,lat)" or address
+	DeliveryLocation string  `json:"delivery_location"` // Can be coordinates "(lng,lat)" or address
 	Notes            string  `json:"notes,omitempty"`
 	ScheduledDate    *string `json:"scheduled_date,omitempty"`
 }
