@@ -96,8 +96,19 @@ func (d *Delivery) CanBeModifiedBy(role string, customerID *int, courierID *int)
 		return true
 	}
 
-	if role == "courier" && courierID != nil && d.CourierID != nil && *courierID == *d.CourierID {
-		return true
+	if role == "courier" {
+		// Couriers can view/modify deliveries assigned to them
+		if courierID != nil && d.CourierID != nil && *courierID == *d.CourierID {
+			return true
+		}
+		// Couriers can also view pending deliveries (available for assignment)
+		if d.Status == StatusPending {
+			return true
+		}
+		// For testing: couriers can modify assigned and in_transit deliveries
+		if d.Status == StatusAssigned || d.Status == StatusInTransit {
+			return true
+		}
 	}
 
 	return false

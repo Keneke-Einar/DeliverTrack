@@ -197,6 +197,23 @@ func (r *PostgresDeliveryRepository) UpdateStatus(ctx context.Context, id int, s
 	return err
 }
 
+// AssignCourier assigns a courier to a delivery
+func (r *PostgresDeliveryRepository) AssignCourier(ctx context.Context, deliveryID, courierID int) error {
+	query := `
+		UPDATE deliveries 
+		SET courier_id = $1, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $2
+		RETURNING id
+	`
+
+	var returnedID int
+	err := r.db.QueryRowContext(ctx, query, courierID, deliveryID).Scan(&returnedID)
+	if err == sql.ErrNoRows {
+		return domain.ErrDeliveryNotFound
+	}
+	return err
+}
+
 // Update updates a delivery
 func (r *PostgresDeliveryRepository) Update(ctx context.Context, delivery *domain.Delivery) error {
 	query := `

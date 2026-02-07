@@ -57,19 +57,18 @@ function parseJwt(token) {
 
 // === АУТЕНТИФИКАЦИЯ ===
 
-export const register = async (username, email, password, role) => {
-  const data = typeof username === 'object' ? username : { username, email, password, role };
-  const response = await api.post('/register', {
-    username: data.username || data.email,
-    email: data.email,
-    password: data.password,
-    role: data.role || 'customer'
+export const register = async (username, email, password, role = 'customer') => {
+  const response = await api.post('/api/auth/register', {
+    username,
+    email,
+    password,
+    role
   });
   return response.data;
 };
 
 export const login = async (username, password) => {
-  const response = await api.post('/login', { username, password });
+  const response = await api.post('/api/auth/login', { username, password });
   
   if (response.data.token) {
     const token = response.data.token;
@@ -105,20 +104,20 @@ export const getCurrentUser = () => {
 };
 // === ДОСТАВКИ ===
 
-export const getDeliveries = async (params = {}) => (await api.get('/api/delivery/deliveries', { params })).data;
-export const getDeliveryById = async (id) => (await api.get(`/api/delivery/deliveries/${id}`)).data;
+export const getDeliveries = async (params = {}) => (await api.get('/deliveries', { params })).data;
+export const getDeliveryById = async (id) => (await api.get(`/deliveries/${id}`)).data;
 
 // РЕШЕНИЕ ПРОБЛЕМЫ 405:
 // Убрали лишний слеш в конце адреса ('/api/delivery/deliveries' вместо '.../')
-export const createDelivery = async (data) => (await api.post('/api/delivery/deliveries', data)).data;
+export const createDelivery = async (data) => (await api.post('/deliveries', data)).data;
 
-export const updateDeliveryStatus = async (id, status, notes = '') => (await api.put(`/api/delivery/deliveries/${id}/status`, { status, notes })).data;
+export const updateDeliveryStatus = async (id, status, notes = '') => (await api.put(`/deliveries/${id}/status`, { status, notes })).data;
 
 // === ОТСЛЕЖИВАНИЕ ===
-export const getDeliveryTrack = async (deliveryId) => (await api.get(`/api/tracking/deliveries/${deliveryId}/track`)).data;
-export const getDeliveryLocation = async (deliveryId) => (await api.get(`/api/tracking/deliveries/${deliveryId}/location`)).data;
-export const calculateETA = async (deliveryId, currentLocation) => (await api.post(`/api/tracking/deliveries/${deliveryId}/eta`, { current_location: currentLocation })).data;
-export const getNotifications = async () => (await api.get('/api/notification/notifications')).data;
-export const markNotificationAsRead = async (notificationId) => (await api.put(`/api/notification/notifications/${notificationId}/read`)).data;
+export const getDeliveryTrack = async (deliveryId) => (await api.get(`/tracking/deliveries/${deliveryId}/track`)).data;
+export const getDeliveryLocation = async (deliveryId) => (await api.get(`/tracking/deliveries/${deliveryId}/location`)).data;
+export const calculateETA = async (deliveryId, currentLocation) => (await api.post(`/tracking/deliveries/${deliveryId}/eta`, { current_location: currentLocation })).data;
+export const getNotifications = async () => (await api.get('/notification/notifications')).data;
+export const markNotificationAsRead = async (notificationId) => (await api.put(`/notification/notifications/${notificationId}/read`)).data;
 
 export default api;

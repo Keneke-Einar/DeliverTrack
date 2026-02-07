@@ -12,6 +12,11 @@ services:
     environment:
       - VAULT_ADDR=http://vault:8200
       - VAULT_TOKEN=root
+      - DELIVERY_DATABASE_URL=postgres://postgres:postgres@postgres:5432/delivertrack?sslmode=disable
+      - DELIVERY_MONGODB_URL=mongodb://admin:admin123@mongodb:27017/delivertrack?authSource=admin
+      - DELIVERY_REDIS_URL=redis:6379
+      - DELIVERY_RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - DELIVERY_JWT_SECRET=your-super-secret-jwt-key-change-in-production
       - DELIVERY_SERVICES_DELIVERY=delivery:50051
       - DELIVERY_SERVICES_TRACKING=tracking:50052
       - DELIVERY_SERVICES_NOTIFICATION=notification:50053
@@ -42,6 +47,11 @@ services:
     environment:
       - VAULT_ADDR=http://vault:8200
       - VAULT_TOKEN=root
+      - TRACKING_DATABASE_URL=postgres://postgres:postgres@postgres:5432/delivertrack?sslmode=disable
+      - TRACKING_MONGODB_URL=mongodb://admin:admin123@mongodb:27017/delivertrack?authSource=admin
+      - TRACKING_REDIS_URL=redis:6379
+      - TRACKING_RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - TRACKING_JWT_SECRET=your-super-secret-jwt-key-change-in-production
       - TRACKING_SERVICES_DELIVERY=delivery:50051
       - TRACKING_SERVICES_TRACKING=tracking:50052
       - TRACKING_SERVICES_NOTIFICATION=notification:50053
@@ -72,6 +82,11 @@ services:
     environment:
       - VAULT_ADDR=http://vault:8200
       - VAULT_TOKEN=root
+      - NOTIFICATION_DATABASE_URL=postgres://postgres:postgres@postgres:5432/delivertrack?sslmode=disable
+      - NOTIFICATION_MONGODB_URL=mongodb://admin:admin123@mongodb:27017/delivertrack?authSource=admin
+      - NOTIFICATION_REDIS_URL=redis:6379
+      - NOTIFICATION_RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - NOTIFICATION_JWT_SECRET=your-super-secret-jwt-key-change-in-production
       - NOTIFICATION_SERVICES_DELIVERY=delivery:50051
       - NOTIFICATION_SERVICES_TRACKING=tracking:50052
       - NOTIFICATION_SERVICES_NOTIFICATION=notification:50053
@@ -102,6 +117,11 @@ services:
     environment:
       - VAULT_ADDR=http://vault:8200
       - VAULT_TOKEN=root
+      - ANALYTICS_DATABASE_URL=postgres://postgres:postgres@postgres:5432/delivertrack?sslmode=disable
+      - ANALYTICS_MONGODB_URL=mongodb://admin:admin123@mongodb:27017/delivertrack?authSource=admin
+      - ANALYTICS_REDIS_URL=redis:6379
+      - ANALYTICS_RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - ANALYTICS_JWT_SECRET=your-super-secret-jwt-key-change-in-production
       - ANALYTICS_SERVICES_DELIVERY=delivery:50051
       - ANALYTICS_SERVICES_TRACKING=tracking:50052
       - ANALYTICS_SERVICES_NOTIFICATION=notification:50053
@@ -131,6 +151,11 @@ services:
     environment:
       - VAULT_ADDR=http://vault:8200
       - VAULT_TOKEN=root
+      - GATEWAY_DATABASE_URL=postgres://postgres:postgres@postgres:5432/delivertrack?sslmode=disable
+      - GATEWAY_MONGODB_URL=mongodb://admin:admin123@mongodb:27017/delivertrack?authSource=admin
+      - GATEWAY_REDIS_URL=redis:6379
+      - GATEWAY_RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - GATEWAY_JWT_SECRET=your-super-secret-jwt-key-change-in-production
     depends_on:
       postgres:
         condition: service_healthy

@@ -30,10 +30,6 @@ type UpdateStatusRequest struct {
 
 // CreateDelivery handles POST /deliveries
 func (h *HTTPHandler) CreateDelivery(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		httputil.SendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	var req ports.CreateDeliveryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -118,10 +114,6 @@ func (h *HTTPHandler) GetDelivery(w http.ResponseWriter, r *http.Request) {
 
 // ListDeliveries handles GET /deliveries
 func (h *HTTPHandler) ListDeliveries(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		httputil.SendErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	// Get query parameters
 	status := r.URL.Query().Get("status")

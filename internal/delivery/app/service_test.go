@@ -94,6 +94,17 @@ func (m *MockDeliveryRepository) UpdateStatus(ctx context.Context, id int, statu
 	return nil
 }
 
+func (m *MockDeliveryRepository) AssignCourier(ctx context.Context, deliveryID, courierID int) error {
+	delivery, exists := m.deliveries[deliveryID]
+	if !exists {
+		return domain.ErrDeliveryNotFound
+	}
+	delivery.CourierID = &courierID
+	delivery.Status = "assigned"
+	delivery.UpdatedAt = time.Now()
+	return nil
+}
+
 func (m *MockDeliveryRepository) Update(ctx context.Context, delivery *domain.Delivery) error {
 	m.deliveries[delivery.ID] = delivery
 	return nil

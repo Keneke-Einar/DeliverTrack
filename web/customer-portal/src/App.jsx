@@ -1,6 +1,5 @@
 // Главный компонент приложения с маршрутизацией
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { getCurrentUser } from './services/api';
 
 // Импортируем страницы
 import Login from './pages/Login';
@@ -15,13 +14,15 @@ import './styles/global.css';
 // Компонент для защиты приватных маршрутов
 // Если пользователь не залогинен - перенаправляем на /login
 function PrivateRoute({ children }) {
-  return children;
+  const token = localStorage.getItem('token');
+  return token ? children : <Navigate to="/login" />;
 }
 
 // Компонент для публичных маршрутов (вход/регистрация)
 // Если пользователь уже залогинен - перенаправляем на дашборд
 function PublicRoute({ children }) {
-  return children;
+  const token = localStorage.getItem('token');
+  return token ? <Navigate to="/dashboard" /> : children;
 }
 
 function App() {
@@ -31,11 +32,7 @@ function App() {
         {/* Главная страница - редирект */}
         <Route 
           path="/" 
-          element={
-            getCurrentUser() 
-              ? <Navigate to="/dashboard" /> 
-              : <Navigate to="/login" />
-          } 
+          element={<Navigate to="/dashboard" />} 
         />
 
         {/* Публичные маршруты (доступны только незалогиненным) */}

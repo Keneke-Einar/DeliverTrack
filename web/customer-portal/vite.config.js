@@ -8,7 +8,7 @@ export default defineConfig({
     proxy: {
       // === УМНЫЙ ПРОКСИ ДЛЯ ЛОГИНА ===
       '/login': {
-        target: 'http://localhost:8084',
+        target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
         // 🔥 МАГИЯ ЗДЕСЬ:
@@ -22,7 +22,7 @@ export default defineConfig({
       
       // === УМНЫЙ ПРОКСИ ДЛЯ РЕГИСТРАЦИИ ===
       '/register': {
-        target: 'http://localhost:8084',
+        target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
         bypass: (req) => {
@@ -34,7 +34,7 @@ export default defineConfig({
 
       // Для остальных API запросов просто пересылаем
       '/api': {
-        target: 'http://localhost:8084',
+        target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
       }

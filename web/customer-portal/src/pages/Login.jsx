@@ -1,18 +1,20 @@
 // Страница входа в систему
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { login } from '../services/api';
 import '../styles/auth.css';
 
 function Login() {
   // Хук для перенаправления на другие страницы
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Состояния для полей формы
   const [identifier, setIdentifier] = useState(''); // username или email
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
 
   // Обработчик отправки формы
   const handleSubmit = async (e) => {
@@ -51,6 +53,13 @@ function Login() {
 
         {/* Форма входа */}
         <form onSubmit={handleSubmit} className="auth-form">
+          {/* Показываем успех если есть */}
+          {successMessage && (
+            <div className="success-message">
+              {successMessage}
+            </div>
+          )}
+
           {/* Показываем ошибку если есть */}
           {error && (
             <div className="error-message">

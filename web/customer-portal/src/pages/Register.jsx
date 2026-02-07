@@ -32,6 +32,17 @@ function Register() {
     e.preventDefault();
     setError('');
 
+    // Проверка заполненности полей
+    if (!formData.username.trim()) {
+      setError('Логин обязателен для заполнения');
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      setError('Email обязателен для заполнения');
+      return;
+    }
+
     // Проверка паролей
     if (formData.password !== formData.confirmPassword) {
       setError('Пароли не совпадают');
@@ -48,12 +59,14 @@ function Register() {
 
     try {
       // Отправляем запрос на регистрацию
-      await register(
-        formData.username,
-        formData.email,
+      const result = await register(
+        formData.username.trim(),
+        formData.email.trim(),
         formData.password,
         formData.role
       );
+      
+      console.log('Регистрация успешна:', result);
       
       // Перенаправляем на страницу входа
       navigate('/login', { 
@@ -63,6 +76,8 @@ function Register() {
       console.error("ОШИБКА РЕГИСТРАЦИИ:", err);
       setError(
         err.response?.data?.error || 
+        err.response?.data?.message ||
+        err.message ||
         'Ошибка регистрации. Попробуйте другой логин или email'
       );
     } finally {

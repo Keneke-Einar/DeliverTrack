@@ -97,25 +97,33 @@ func main() {
 	// Public routes
 	mux.HandleFunc("/health", healthHandler)
 	mux.HandleFunc("/", rootHandler)
-	mux.HandleFunc("/login", authHandler.Login)
-	mux.HandleFunc("/register", authHandler.Register)
+	mux.HandleFunc("/api/auth/login", authHandler.Login)
+	mux.HandleFunc("/api/auth/register", authHandler.Register)
 
 	// Protected routes - delivery endpoints
-	mux.HandleFunc("/deliveries", authMiddleware(authService, deliveryHTTPHandler.ListDeliveries))
-	mux.HandleFunc("/deliveries/", func(w http.ResponseWriter, r *http.Request) {
-		path := strings.TrimPrefix(r.URL.Path, "/deliveries/")
-		if path == "" {
-			// Handle POST /deliveries
+	mux.HandleFunc("/api/delivery/deliveries", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			authMiddleware(authService, deliveryHTTPHandler.ListDeliveries)(w, r)
+		} else if r.Method == http.MethodPost {
 			authMiddleware(authService, deliveryHTTPHandler.CreateDelivery)(w, r)
+		} else {
+			http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
+		}
+	})
+	mux.HandleFunc("/api/delivery/deliveries/", func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/api/delivery/deliveries/")
+		if path == "" {
+			// This shouldn't happen since /api/delivery/deliveries is handled above
+			http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
 			return
 		}
 
 		// Check if path ends with /status
 		if strings.HasSuffix(path, "/status") {
-			// Handle PUT /deliveries/:id/status
+			// Handle PUT /api/delivery/deliveries/:id/status
 			authMiddleware(authService, deliveryHTTPHandler.UpdateDeliveryStatus)(w, r)
 		} else {
-			// Handle GET /deliveries/:id
+			// Handle GET /api/delivery/deliveries/:id
 			authMiddleware(authService, deliveryHTTPHandler.GetDelivery)(w, r)
 		}
 	})

@@ -163,12 +163,23 @@ func (s *DeliveryService) UpdateDeliveryStatus(ctx context.Context, req ports.Up
 		return domain.ErrUnauthorized
 	}
 
-	// Validate and update status in domain entity
-	if err := delivery.UpdateStatus(req.Status); err != nil {
-		return err
+	// If a courier is updating status to "assigned", assign them to the delivery
+	if req.Role == "courier" && req.UserCourierID != nil && req.Status == "assigned" && delivery.CourierID == nil {
+		if err := delivery.AssignCourier(*req.UserCourierID); err != nil {
+			return err
+		}
+		// Update the repository with courier assignment
+		if err := s.repo.AssignCourier(ctx, req.ID, *req.UserCourierID); err != nil {
+			return err
+		}
+	} else {
+		// Validate and update status in domain entity
+		if err := delivery.UpdateStatus(req.Status); err != nil {
+			return err
+		}
 	}
 
-	// Persist the update
+	// Persist the status update
 	if err := s.repo.UpdateStatus(ctx, req.ID, req.Status, req.Notes); err != nil {
 		return err
 	}

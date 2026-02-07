@@ -23,6 +23,9 @@ type DeliveryRepository interface {
 	// UpdateStatus updates the status of a delivery
 	UpdateStatus(ctx context.Context, id int, status, notes string) error
 
+	// AssignCourier assigns a courier to a delivery
+	AssignCourier(ctx context.Context, deliveryID, courierID int) error
+
 	// Update updates a delivery
 	Update(ctx context.Context, delivery *domain.Delivery) error
 }
