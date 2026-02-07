@@ -86,6 +86,32 @@ func (d *Delivery) AssignCourier(courierID int) error {
 	return nil
 }
 
+// CanBeViewedBy checks if a user can view (read) this delivery.
+// More permissive than CanBeModifiedBy: couriers can view any active delivery.
+func (d *Delivery) CanBeViewedBy(role string, customerID *int, courierID *int) bool {
+	if role == "admin" {
+		return true
+	}
+	if role == "customer" && customerID != nil && *customerID == d.CustomerID {
+		return true
+	}
+	if role == "courier" {
+		// Couriers can view deliveries assigned to them
+		if courierID != nil && d.CourierID != nil && *courierID == *d.CourierID {
+			return true
+		}
+		// Couriers can view pending deliveries (available for pickup)
+		if d.Status == StatusPending {
+			return true
+		}
+		// Couriers can view assigned/in-transit deliveries
+		if d.Status == StatusAssigned || d.Status == StatusInTransit {
+			return true
+		}
+	}
+	return false
+}
+
 // CanBeModifiedBy checks if a user can modify this delivery
 func (d *Delivery) CanBeModifiedBy(role string, customerID *int, courierID *int) bool {
 	if role == "admin" {

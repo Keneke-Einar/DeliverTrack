@@ -337,11 +337,26 @@
             <!-- Map -->
             <div class="lg:col-span-2">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                    <div class="flex items-center gap-2 mb-3">
-                        <span class="pulse-dot"></span>
-                        <span class="text-sm font-medium text-gray-600">Live Tracking</span>
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <!-- Live connection indicator -->
+                            <span class="ws-dot" :class="{
+                                'ws-dot-connected': wsStatus === 'connected',
+                                'ws-dot-connecting': wsStatus === 'connecting',
+                                'ws-dot-disconnected': wsStatus === 'disconnected'
+                            }"></span>
+                            <span class="text-sm font-medium" :class="{
+                                'text-green-600': wsStatus === 'connected',
+                                'text-amber-500': wsStatus === 'connecting',
+                                'text-red-500': wsStatus === 'disconnected'
+                            }" x-text="wsStatus === 'connected' ? 'Live Tracking' : wsStatus === 'connecting' ? 'Connecting…' : 'Reconnecting…'"></span>
+                        </div>
+                        <div class="flex items-center gap-3 text-xs text-gray-400">
+                            <span x-show="updateCount > 0" x-text="updateCount + ' updates'"></span>
+                            <span x-effect="setInterval(() => $el.textContent = lastUpdatedText(), 1000)" x-text="lastUpdatedText()"></span>
+                        </div>
                     </div>
-                    <div id="tracking-map" class="map-container"></div>
+                    <div id="tracking-map" class="map-container map-container-lg"></div>
                 </div>
             </div>
 
@@ -385,6 +400,18 @@
                         <span x-text="currentLocation?.Longitude?.toFixed(6)"></span>
                     </div>
                     <div class="text-xs text-gray-400 mt-1" x-text="formatDate(currentLocation?.Timestamp)"></div>
+                </div>
+
+                <!-- Live Feed -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5" x-show="updateCount > 0">
+                    <h4 class="font-semibold text-gray-800 mb-2">Live Feed</h4>
+                    <div class="text-sm text-gray-600">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                            <span x-text="updateCount + ' location update' + (updateCount !== 1 ? 's' : '') + ' received'"></span>
+                        </div>
+                        <div class="text-xs text-gray-400" x-text="'Last: ' + lastUpdatedText()"></div>
+                    </div>
                 </div>
             </div>
         </div>

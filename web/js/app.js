@@ -253,8 +253,13 @@ document.addEventListener('alpine:init', () => {
         eta: null,
         map: null,
         courierMarker: null,
+        routePolyline: null,
         ws: null,
+        wsStatus: 'connecting', // 'connecting' | 'connected' | 'disconnected'
+        lastUpdated: null,
+        updateCount: 0,
         loading: true,
+        _etaDebounce: null,
 
         async init() {
             const id = Alpine.store('router').params.id;
@@ -267,17 +272,7 @@ document.addEventListener('alpine:init', () => {
                 this.locations = (trackData && trackData.locations) ? trackData.locations : [];
 
                 try { this.currentLocation = await api.get('/api/tracking/deliveries/' + id + '/location'); } catch (_) {}
-                try {
-                    var etaResp = await api.get('/api/tracking/deliveries/' + id + '/eta');
-                    if (etaResp) {
-                        // eta is in nanoseconds — convert to minutes
-                        this.eta = {
-                            minutes: Math.round((etaResp.eta || 0) / 60000000000),
-                            distance: (etaResp.distance_km || 0).toFixed(1),
-                            speed: (etaResp.average_speed_kmh || 0).toFixed(0)
-                        };
-                    }
-                } catch (_) {}
+                await this.refreshETA(id);
 
                 this.$nextTick(() => this.initMap());
                 this.connectWS(id);
@@ -286,6 +281,26 @@ document.addEventListener('alpine:init', () => {
             } finally {
                 this.loading = false;
             }
+        },
+
+        async refreshETA(deliveryId) {
+            var id = deliveryId || Alpine.store('router').params.id;
+            try {
+                var etaResp = await api.get('/api/tracking/deliveries/' + id + '/eta');
+                if (etaResp) {
+                    this.eta = {
+                        minutes: Math.round((etaResp.eta || 0) / 60000000000),
+                        distance: (etaResp.distance_km || 0).toFixed(1),
+                        speed: (etaResp.average_speed_kmh || 0).toFixed(0)
+                    };
+                }
+            } catch (_) {}
+        },
+
+        debouncedRefreshETA() {
+            var self = this;
+            if (this._etaDebounce) clearTimeout(this._etaDebounce);
+            this._etaDebounce = setTimeout(function () { self.refreshETA(); }, 3000);
         },
 
         initMap() {
@@ -315,10 +330,31 @@ document.addEventListener('alpine:init', () => {
                 );
             }
 
+            // Draw initial route trail
             if (this.locations.length > 1) {
                 var pts = this.locations.map(function (l) { return [l.Latitude, l.Longitude]; });
-                MapHelper.drawRoute(this.map, pts);
+                this.routePolyline = MapHelper.drawRoute(this.map, pts);
             }
+        },
+
+        /**
+         * Smoothly animate the courier marker from current to target over ~500ms.
+         */
+        animateMarker(marker, targetLat, targetLng) {
+            var start = marker.getLatLng();
+            var startLat = start.lat, startLng = start.lng;
+            var frames = 20;
+            var step = 0;
+            var interval = setInterval(function () {
+                step++;
+                var t = step / frames;
+                // ease-out quad
+                t = t * (2 - t);
+                var lat = startLat + (targetLat - startLat) * t;
+                var lng = startLng + (targetLng - startLng) * t;
+                marker.setLatLng([lat, lng]);
+                if (step >= frames) clearInterval(interval);
+            }, 25);
         },
 
         connectWS(deliveryId) {
@@ -327,26 +363,57 @@ document.addEventListener('alpine:init', () => {
             var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             var url = protocol + '//' + window.location.host + '/ws/deliveries/' + deliveryId + '/track?token=' + token;
 
+            this.wsStatus = 'connecting';
             this.ws = new WebSocket(url);
+
+            this.ws.onopen = function () {
+                self.wsStatus = 'connected';
+            };
+
             this.ws.onmessage = function (event) {
                 try {
                     var data = JSON.parse(event.data);
                     if (data.location) {
-                        self.currentLocation = data.location;
+                        var loc = data.location;
+                        self.currentLocation = loc;
+                        self.lastUpdated = new Date();
+                        self.updateCount++;
+
+                        // Animate the courier marker to new position
                         if (self.courierMarker) {
-                            MapHelper.updateMarker(self.courierMarker, data.location.Latitude, data.location.Longitude);
+                            self.animateMarker(self.courierMarker, loc.Latitude, loc.Longitude);
                         } else if (self.map) {
                             MapHelper.init();
                             self.courierMarker = MapHelper.addMarker(
-                                self.map, data.location.Latitude, data.location.Longitude,
+                                self.map, loc.Latitude, loc.Longitude,
                                 MapHelper.courierIcon, 'Courier'
                             );
                         }
-                        if (self.map) self.map.panTo([data.location.Latitude, data.location.Longitude]);
+
+                        // Extend the live route trail
+                        if (self.routePolyline) {
+                            self.routePolyline.addLatLng([loc.Latitude, loc.Longitude]);
+                        } else if (self.map) {
+                            self.routePolyline = MapHelper.drawRoute(self.map, [[loc.Latitude, loc.Longitude]]);
+                        }
+
+                        // Smooth pan map to follow courier
+                        if (self.map) {
+                            self.map.panTo([loc.Latitude, loc.Longitude], { animate: true, duration: 0.5 });
+                        }
+
+                        // Debounced ETA refresh after location updates
+                        self.debouncedRefreshETA();
                     }
                 } catch (_) {}
             };
+
+            this.ws.onerror = function () {
+                self.wsStatus = 'disconnected';
+            };
+
             this.ws.onclose = function () {
+                self.wsStatus = 'disconnected';
                 setTimeout(function () {
                     if (Alpine.store('router').page === 'customer-track') {
                         self.connectWS(deliveryId);
@@ -355,10 +422,21 @@ document.addEventListener('alpine:init', () => {
             };
         },
 
+        /** Human-readable "X seconds ago" for last update */
+        lastUpdatedText() {
+            if (!this.lastUpdated) return 'Waiting for updates…';
+            var seconds = Math.round((Date.now() - this.lastUpdated.getTime()) / 1000);
+            if (seconds < 5) return 'Just now';
+            if (seconds < 60) return seconds + 's ago';
+            var minutes = Math.floor(seconds / 60);
+            return minutes + 'm ' + (seconds % 60) + 's ago';
+        },
+
         statusColor: statusColor,
         formatDate: formatDate,
 
         destroy() {
+            if (this._etaDebounce) clearTimeout(this._etaDebounce);
             if (this.ws) { this.ws.close(); this.ws = null; }
             if (this.map) { this.map.remove(); this.map = null; }
         }

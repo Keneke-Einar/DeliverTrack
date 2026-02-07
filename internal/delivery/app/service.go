@@ -107,8 +107,8 @@ func (s *DeliveryService) GetDelivery(ctx context.Context, req ports.GetDelivery
 		return nil, err
 	}
 
-	// Check authorization
-	if !delivery.CanBeModifiedBy(req.Role, req.UserCustomerID, req.UserCourierID) {
+	// Check read authorization (more permissive than modify)
+	if !delivery.CanBeViewedBy(req.Role, req.UserCustomerID, req.UserCourierID) {
 		return nil, domain.ErrUnauthorized
 	}
 
