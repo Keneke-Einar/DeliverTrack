@@ -156,6 +156,10 @@ services:
       - GATEWAY_REDIS_URL=redis:6379
       - GATEWAY_RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
       - GATEWAY_JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - GATEWAY_SERVICES_DELIVERY=http://delivery:8080
+      - GATEWAY_SERVICES_TRACKING=http://tracking:8081
+      - GATEWAY_SERVICES_NOTIFICATION=http://notification:8082
+      - GATEWAY_SERVICES_ANALYTICS=http://analytics:8083
     depends_on:
       postgres:
         condition: service_healthy

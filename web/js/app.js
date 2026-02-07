@@ -190,7 +190,9 @@ document.addEventListener('alpine:init', () => {
         async init() {
             try {
                 const auth = Alpine.store('auth');
-                const data = await api.get('/api/delivery/deliveries?customer_id=' + auth.customerId);
+                var url = '/api/delivery/deliveries';
+                if (auth.customerId) url += '?customer_id=' + auth.customerId;
+                const data = await api.get(url);
                 this.deliveries = Array.isArray(data) ? data : [];
             } catch (e) {
                 Alpine.store('toast').error('Failed to load deliveries');

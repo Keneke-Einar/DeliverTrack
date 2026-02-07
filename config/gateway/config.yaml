@@ -1,2 +1,8 @@
 database:
   url: "postgres://postgres:postgres@postgres:5432/delivertrack?sslmode=disable"
+
+services:
+  delivery: "http://delivery:8080"
+  tracking: "http://tracking:8081"
+  notification: "http://notification:8082"
+  analytics: "http://analytics:8083"

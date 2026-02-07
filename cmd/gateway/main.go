@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -77,11 +78,48 @@ func main() {
 	// Health check
 	mux.HandleFunc("/health", gateway.healthHandler)
 
+	// Proxy target URLs: prefer env vars (set in docker-compose), then config, then localhost fallback
+	deliveryURL := os.Getenv("GATEWAY_SERVICES_DELIVERY")
+	if deliveryURL == "" {
+		deliveryURL = cfg.Services.Delivery
+	}
+	if deliveryURL == "" || !strings.HasPrefix(deliveryURL, "http") {
+		deliveryURL = "http://localhost:8080"
+	}
+	trackingURL := os.Getenv("GATEWAY_SERVICES_TRACKING")
+	if trackingURL == "" {
+		trackingURL = cfg.Services.Tracking
+	}
+	if trackingURL == "" || !strings.HasPrefix(trackingURL, "http") {
+		trackingURL = "http://localhost:8081"
+	}
+	notificationURL := os.Getenv("GATEWAY_SERVICES_NOTIFICATION")
+	if notificationURL == "" {
+		notificationURL = cfg.Services.Notification
+	}
+	if notificationURL == "" || !strings.HasPrefix(notificationURL, "http") {
+		notificationURL = "http://localhost:8082"
+	}
+	analyticsURL := os.Getenv("GATEWAY_SERVICES_ANALYTICS")
+	if analyticsURL == "" {
+		analyticsURL = cfg.Services.Analytics
+	}
+	if analyticsURL == "" || !strings.HasPrefix(analyticsURL, "http") {
+		analyticsURL = "http://localhost:8083"
+	}
+
+	lg.Info("Proxy targets configured",
+		zap.String("delivery", deliveryURL),
+		zap.String("tracking", trackingURL),
+		zap.String("notification", notificationURL),
+		zap.String("analytics", analyticsURL),
+	)
+
 	// API routes
-	mux.Handle("/api/delivery/", gateway.authMiddleware(limiter, gateway.proxyHandler("delivery", "http://localhost:8080")))
-	mux.Handle("/api/tracking/", gateway.authMiddleware(limiter, gateway.proxyHandler("tracking", "http://localhost:8081")))
-	mux.Handle("/api/notification/", gateway.authMiddleware(limiter, gateway.proxyHandler("notification", "http://localhost:8082")))
-	mux.Handle("/api/analytics/", gateway.authMiddleware(limiter, gateway.proxyHandler("analytics", "http://localhost:8083")))
+	mux.Handle("/api/delivery/", gateway.authMiddleware(limiter, gateway.proxyHandler("delivery", deliveryURL)))
+	mux.Handle("/api/tracking/", gateway.authMiddleware(limiter, gateway.proxyHandler("tracking", trackingURL)))
+	mux.Handle("/api/notification/", gateway.authMiddleware(limiter, gateway.proxyHandler("notification", notificationURL)))
+	mux.Handle("/api/analytics/", gateway.authMiddleware(limiter, gateway.proxyHandler("analytics", analyticsURL)))
 
 	// Auth routes (public)
 	authHandler := authAdapters.NewHTTPHandler(gateway.authService, cfg.Auth.JWTExpiration)
