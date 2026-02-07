@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeliverTrack</title>
+
+    <!-- Tailwind CSS (Play CDN — JIT, zero build) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+
+<body class="bg-gray-50 min-h-screen text-gray-900" x-data x-init="$store.router.init()">
+
+<!-- ═══════════════════════════════════════════
+     TOAST NOTIFICATIONS
+     ═══════════════════════════════════════════ -->
+<div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2" style="max-width:22rem">
+    <template x-for="t in $store.toast.items" :key="t.id">
+        <div class="toast-enter rounded-lg px-4 py-3 shadow-lg text-sm font-medium text-white"
+             :class="{
+                 'bg-green-600': t.type === 'success',
+                 'bg-red-600':   t.type === 'error',
+                 'bg-indigo-600': t.type === 'info'
+             }"
+             x-text="t.message"></div>
+    </template>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     LOGIN / REGISTER PAGE
+     ═══════════════════════════════════════════ -->
+<template x-if="$store.router.page === 'login'">
+    <div x-data="loginPage()" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-700 px-4">
+        <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
+            <!-- Logo -->
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-indigo-600 text-white text-2xl mb-3">🚚</div>
+                <h1 class="text-2xl font-bold text-gray-900">DeliverTrack</h1>
+                <p class="text-gray-500 text-sm mt-1" x-text="mode === 'login' ? 'Sign in to your account' : 'Create a new account'"></p>
+            </div>
+
+            <!-- Error -->
+            <div x-show="error" x-cloak class="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3" x-text="error"></div>
+
+            <!-- Login Form -->
+            <form x-show="mode === 'login'" @submit.prevent="doLogin" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <input x-model="username" type="text" required
+                           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input x-model="password" type="password" required
+                           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                </div>
+                <button type="submit" :disabled="loading"
+                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2">
+                    <span x-show="loading" class="spinner"></span>
+                    <span x-text="loading ? 'Signing in…' : 'Sign In'"></span>
+                </button>
+            </form>
+
+            <!-- Register Form -->
+            <form x-show="mode === 'register'" @submit.prevent="doRegister" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <input x-model="username" type="text" required
+                           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input x-model="email" type="email" required
+                           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input x-model="password" type="password" required minlength="6"
+                           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                    <select x-model="role"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                        <option value="customer">Customer</option>
+                        <option value="courier">Courier</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <button type="submit" :disabled="loading"
+                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2">
+                    <span x-show="loading" class="spinner"></span>
+                    <span x-text="loading ? 'Creating account…' : 'Create Account'"></span>
+                </button>
+            </form>
+
+            <!-- Toggle -->
+            <p class="text-center text-sm text-gray-500 mt-6">
+                <span x-show="mode === 'login'">
+                    Don't have an account?
+                    <button @click="mode = 'register'; error = ''" class="text-indigo-600 font-semibold hover:underline">Register</button>
+                </span>
+                <span x-show="mode === 'register'">
+                    Already have an account?
+                    <button @click="mode = 'login'; error = ''" class="text-indigo-600 font-semibold hover:underline">Sign In</button>
+                </span>
+            </p>
+        </div>
+    </div>
+</template>
+
+<!-- ═══════════════════════════════════════════
+     MAIN APPLICATION SHELL
+     ═══════════════════════════════════════════ -->
+<template x-if="$store.auth.isAuthenticated()">
+    <div class="flex min-h-screen">
+
+        <!-- ── Sidebar ────────────────────── -->
+        <aside class="sidebar-desktop w-64 bg-gray-900 text-white flex flex-col flex-shrink-0">
+            <!-- Brand -->
+            <div class="px-5 py-5 flex items-center gap-3 border-b border-gray-800">
+                <div class="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-lg">🚚</div>
+                <span class="font-bold text-lg">DeliverTrack</span>
+            </div>
+
+            <!-- Nav -->
+            <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+
+                <!-- Customer Nav -->
+                <template x-if="$store.auth.role === 'customer'">
+                    <div class="space-y-1">
+                        <p class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Customer</p>
+                        <a href="#/customer/dashboard"
+                           class="sidebar-link" :class="{ 'active': $store.router.page === 'customer-dashboard' }">
+                            <span>📊</span> Dashboard
+                        </a>
+                        <a href="#/customer/create"
+                           class="sidebar-link" :class="{ 'active': $store.router.page === 'customer-create' }">
+                            <span>➕</span> New Delivery
+                        </a>
+                        <a href="#/customer/notifications"
+                           class="sidebar-link" :class="{ 'active': $store.router.page === 'customer-notifications' }">
+                            <span>🔔</span> Notifications
+                        </a>
+                    </div>
+                </template>
+
+                <!-- Courier Nav -->
+                <template x-if="$store.auth.role === 'courier'">
+                    <div class="space-y-1">
+                        <p class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Courier</p>
+                        <a href="#/courier/dashboard"
+                           class="sidebar-link" :class="{ 'active': $store.router.page === 'courier-dashboard' }">
+                            <span>📊</span> My Deliveries
+                        </a>
+                        <a href="#/courier/location"
+                           class="sidebar-link" :class="{ 'active': $store.router.page === 'courier-location' }">
+                            <span>📍</span> Update Location
+                        </a>
+                    </div>
+                </template>
+
+                <!-- Admin Nav -->
+                <template x-if="$store.auth.role === 'admin'">
+                    <div class="space-y-1">
+                        <p class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Admin</p>
+                        <a href="#/admin/dashboard"
+                           class="sidebar-link" :class="{ 'active': $store.router.page === 'admin-dashboard' }">
+                            <span>📊</span> Dashboard
+                        </a>
+                        <a href="#/admin/deliveries"
+                           class="sidebar-link" :class="{ 'active': $store.router.page === 'admin-deliveries' }">
+                            <span>📦</span> Deliveries
+                        </a>
+                        <a href="#/admin/map"
+                           class="sidebar-link" :class="{ 'active': $store.router.page === 'admin-map' }">
+                            <span>🗺️</span> Live Map
+                        </a>
+                        <a href="#/admin/notifications"
+                           class="sidebar-link" :class="{ 'active': $store.router.page === 'admin-notifications' }">
+                            <span>📨</span> Notifications
+                        </a>
+                    </div>
+                </template>
+            </nav>
+
+            <!-- User / Logout -->
+            <div class="px-3 py-4 border-t border-gray-800">
+                <div class="flex items-center gap-3 px-3 mb-3">
+                    <div class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-bold"
+                         x-text="$store.auth.username.charAt(0).toUpperCase()"></div>
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium truncate" x-text="$store.auth.username"></p>
+                        <p class="text-xs text-gray-400 capitalize" x-text="$store.auth.role"></p>
+                    </div>
+                </div>
+                <button @click="$store.auth.clear(); $store.router.resolve()"
+                        class="sidebar-link w-full text-red-400 hover:text-red-300 hover:bg-red-900/30">
+                    <span>🚪</span> Sign Out
+                </button>
+            </div>
+        </aside>
+
+        <!-- ── Main Content Area ──────────── -->
+        <main class="flex-1 overflow-y-auto">
+            <!-- Top Bar -->
+            <header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+                <h2 class="text-lg font-semibold text-gray-800 capitalize"
+                    x-text="$store.router.page.replace(/-/g, ' › ')"></h2>
+                <div class="flex items-center gap-3 text-sm text-gray-500">
+                    <span class="pulse-dot"></span>
+                    <span>Connected</span>
+                </div>
+            </header>
+
+            <div class="p-6">
+
+<!-- ═══ CUSTOMER: Dashboard ═══════════════ -->
+<template x-if="$store.router.page === 'customer-dashboard'">
+    <section x-data="customerDashboard()">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold">My Deliveries</h3>
+            <a href="#/customer/create" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition">
+                + New Delivery
+            </a>
+        </div>
+
+        <!-- Loading -->
+        <div x-show="loading" class="flex justify-center py-12">
+            <div class="spinner-dark" style="width:2rem;height:2rem;border-width:3px"></div>
+        </div>
+
+        <!-- Empty -->
+        <div x-show="!loading && deliveries.length === 0" class="empty-state">
+            <p class="text-lg font-medium text-gray-400">No deliveries yet</p>
+            <p class="text-sm text-gray-400 mt-1">Create your first delivery to get started</p>
+        </div>
+
+        <!-- Table -->
+        <div x-show="!loading && deliveries.length > 0" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Pickup</th>
+                        <th>Delivery</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="d in deliveries" :key="d.ID">
+                        <tr>
+                            <td class="font-mono text-xs" x-text="'#' + d.ID"></td>
+                            <td class="max-w-[10rem] truncate" x-text="d.PickupLocation"></td>
+                            <td class="max-w-[10rem] truncate" x-text="d.DeliveryLocation"></td>
+                            <td>
+                                <span class="status-badge" :class="statusColor(d.Status)" x-text="d.Status?.replace('_',' ')"></span>
+                            </td>
+                            <td class="text-xs text-gray-500" x-text="formatDate(d.CreatedAt)"></td>
+                            <td>
+                                <button @click="track(d.ID)"
+                                        class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                                    Track →
+                                </button>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</template>
+
+<!-- ═══ CUSTOMER: Create Delivery ═════════ -->
+<template x-if="$store.router.page === 'customer-create'">
+    <section x-data="customerCreate()">
+        <h3 class="text-xl font-bold mb-6">Create New Delivery</h3>
+
+        <div class="max-w-lg bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <form @submit.prevent="submit" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Pickup Location</label>
+                    <input x-model="form.pickup_location" type="text" required
+                           placeholder="(longitude, latitude) e.g. (-74.0060, 40.7128)"
+                           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                    <p class="text-xs text-gray-400 mt-1">Format: (longitude, latitude)</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Delivery Location</label>
+                    <input x-model="form.delivery_location" type="text" required
+                           placeholder="(longitude, latitude) e.g. (-73.9855, 40.7580)"
+                           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notes <span class="text-gray-400">(optional)</span></label>
+                    <textarea x-model="form.notes" rows="3"
+                              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                              placeholder="Special instructions"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Scheduled Date <span class="text-gray-400">(optional)</span></label>
+                    <input x-model="form.scheduled_date" type="datetime-local"
+                           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" :disabled="loading"
+                            class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2.5 rounded-lg transition disabled:opacity-50 flex items-center gap-2">
+                        <span x-show="loading" class="spinner"></span>
+                        <span x-text="loading ? 'Creating…' : 'Create Delivery'"></span>
+                    </button>
+                    <a href="#/customer/dashboard" class="px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium transition">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </section>
+</template>
+
+<!-- ═══ CUSTOMER: Track Delivery ══════════ -->
+<template x-if="$store.router.page === 'customer-track'">
+    <section x-data="customerTrack()">
+        <div class="flex items-center gap-3 mb-6">
+            <a href="#/customer/dashboard" class="text-gray-400 hover:text-gray-600">← Back</a>
+            <h3 class="text-xl font-bold">
+                Track Delivery <span class="text-indigo-600" x-text="'#' + ($store.router.params.id || '')"></span>
+            </h3>
+        </div>
+
+        <div x-show="loading" class="flex justify-center py-12">
+            <div class="spinner-dark" style="width:2rem;height:2rem;border-width:3px"></div>
+        </div>
+
+        <div x-show="!loading" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Map -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="pulse-dot"></span>
+                        <span class="text-sm font-medium text-gray-600">Live Tracking</span>
+                    </div>
+                    <div id="tracking-map" class="map-container"></div>
+                </div>
+            </div>
+
+            <!-- Details -->
+            <div class="space-y-4">
+                <!-- Delivery Info -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5" x-show="delivery">
+                    <h4 class="font-semibold text-gray-800 mb-3">Delivery Info</h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Status</span>
+                            <span class="status-badge" :class="statusColor(delivery?.Status)" x-text="delivery?.Status?.replace('_',' ')"></span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Pickup</span>
+                            <span class="text-gray-800 text-right max-w-[12rem] truncate" x-text="delivery?.PickupLocation"></span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Dropoff</span>
+                            <span class="text-gray-800 text-right max-w-[12rem] truncate" x-text="delivery?.DeliveryLocation"></span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Created</span>
+                            <span class="text-gray-800" x-text="formatDate(delivery?.CreatedAt)"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ETA Card -->
+                <div class="bg-indigo-50 rounded-xl border border-indigo-200 p-5" x-show="eta">
+                    <h4 class="font-semibold text-indigo-800 mb-2">Estimated Arrival</h4>
+                    <div class="text-3xl font-bold text-indigo-600" x-text="(eta?.minutes || '—') + ' min'"></div>
+                    <div class="text-sm text-indigo-500 mt-1" x-text="(eta?.distance || '—') + ' km away · ' + (eta?.speed || '—') + ' km/h'"></div>
+                </div>
+
+                <!-- Current Location -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5" x-show="currentLocation">
+                    <h4 class="font-semibold text-gray-800 mb-2">Courier Position</h4>
+                    <div class="text-sm text-gray-600 font-mono">
+                        <span x-text="currentLocation?.Latitude?.toFixed(6)"></span>,
+                        <span x-text="currentLocation?.Longitude?.toFixed(6)"></span>
+                    </div>
+                    <div class="text-xs text-gray-400 mt-1" x-text="formatDate(currentLocation?.Timestamp)"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+</template>
+
+<!-- ═══ CUSTOMER: Notifications ═══════════ -->
+<template x-if="$store.router.page === 'customer-notifications'">
+    <section x-data="customerNotifications()">
+        <h3 class="text-xl font-bold mb-6">Notifications</h3>
+
+        <div x-show="loading" class="flex justify-center py-12">
+            <div class="spinner-dark" style="width:2rem;height:2rem;border-width:3px"></div>
+        </div>
+
+        <div x-show="!loading && notifications.length === 0" class="empty-state">
+            <p class="text-lg font-medium text-gray-400">No notifications</p>
+        </div>
+
+        <div x-show="!loading && notifications.length > 0" class="space-y-3 max-w-2xl">
+            <template x-for="n in notifications" :key="n.ID">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 px-5 py-4 flex items-start gap-4"
+                     :class="{ 'opacity-60': n.Status === 'read' || n.Status === 'sent' }">
+                    <div class="text-2xl" x-text="n.Type === 'email' ? '📧' : n.Type === 'sms' ? '💬' : '🔔'"></div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-800" x-text="n.Subject || n.Type"></p>
+                        <p class="text-sm text-gray-600 mt-0.5" x-text="n.Message"></p>
+                        <p class="text-xs text-gray-400 mt-1" x-text="formatDate(n.CreatedAt)"></p>
+                    </div>
+                    <button x-show="n.Status !== 'read' && n.Status !== 'sent'"
+                            @click="markRead(n.ID)"
+                            class="text-xs text-indigo-600 hover:text-indigo-800 font-medium whitespace-nowrap">
+                        Mark read
+                    </button>
+                </div>
+            </template>
+        </div>
+    </section>
+</template>
+
+<!-- ═══ COURIER: Dashboard ════════════════ -->
+<template x-if="$store.router.page === 'courier-dashboard'">
+    <section x-data="courierDashboard()">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold">My Deliveries</h3>
+            <a href="#/courier/location" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition">
+                📍 Update Location
+            </a>
+        </div>
+
+        <div x-show="loading" class="flex justify-center py-12">
+            <div class="spinner-dark" style="width:2rem;height:2rem;border-width:3px"></div>
+        </div>
+
+        <div x-show="!loading && deliveries.length === 0" class="empty-state">
+            <p class="text-lg font-medium text-gray-400">No deliveries assigned</p>
+        </div>
+
+        <div x-show="!loading && deliveries.length > 0" class="grid gap-4">
+            <template x-for="d in deliveries" :key="d.ID">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 card-hover">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-3">
+                            <span class="font-mono text-sm font-bold text-gray-700" x-text="'#' + d.ID"></span>
+                            <span class="status-badge" :class="statusColor(d.Status)" x-text="d.Status?.replace('_',' ')"></span>
+                        </div>
+                        <span class="text-xs text-gray-400" x-text="formatDate(d.CreatedAt)"></span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 text-sm mb-4">
+                        <div>
+                            <p class="text-gray-500 text-xs mb-0.5">Pickup</p>
+                            <p class="text-gray-800 truncate" x-text="d.PickupLocation"></p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 text-xs mb-0.5">Dropoff</p>
+                            <p class="text-gray-800 truncate" x-text="d.DeliveryLocation"></p>
+                        </div>
+                    </div>
+                    <!-- Status Actions -->
+                    <div class="flex gap-2" x-show="nextStatusFor(d.Status)">
+                        <button @click="updateStatus(d.ID, nextStatusFor(d.Status))"
+                                class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition">
+                            Mark as <span x-text="nextStatusFor(d.Status)?.replace('_',' ')"></span>
+                        </button>
+                        <button x-show="d.Status !== 'cancelled' && d.Status !== 'delivered'"
+                                @click="updateStatus(d.ID, 'cancelled')"
+                                class="border border-red-300 text-red-600 hover:bg-red-50 text-sm font-medium px-4 py-1.5 rounded-lg transition">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </section>
+</template>
+
+<!-- ═══ COURIER: Location Update ══════════ -->
+<template x-if="$store.router.page === 'courier-location'">
+    <section x-data="courierLocation()">
+        <h3 class="text-xl font-bold mb-6">Update Location</h3>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Map -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                    <div id="courier-map" class="map-container"></div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="space-y-4">
+                <!-- Position Info -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                    <h4 class="font-semibold text-gray-800 mb-3">Your Position</h4>
+                    <div x-show="position" class="text-sm text-gray-600 font-mono">
+                        <div>Lat: <span x-text="position?.latitude?.toFixed(6)"></span></div>
+                        <div>Lng: <span x-text="position?.longitude?.toFixed(6)"></span></div>
+                        <div x-show="position?.accuracy" class="text-xs text-gray-400 mt-1">
+                            Accuracy: <span x-text="Math.round(position?.accuracy || 0)"></span>m
+                        </div>
+                    </div>
+                    <div x-show="!position" class="text-sm text-gray-400">Fetching location…</div>
+                    <button @click="getPosition()"
+                            class="mt-3 w-full text-sm border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-1.5 rounded-lg transition">
+                        🔄 Refresh Position
+                    </button>
+                </div>
+
+                <!-- Delivery Link -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                    <h4 class="font-semibold text-gray-800 mb-3">Link to Delivery</h4>
+                    <input x-model="deliveryId" type="number" placeholder="Delivery ID (optional)"
+                           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                </div>
+
+                <!-- Send Controls -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 space-y-3">
+                    <button @click="sendLocation()" :disabled="!position || sending"
+                            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2">
+                        <span x-show="sending" class="spinner"></span>
+                        <span x-text="sending ? 'Sending…' : '📡 Send Location Now'"></span>
+                    </button>
+
+                    <button @click="toggleAutoUpdate()"
+                            class="w-full font-semibold py-2.5 rounded-lg transition flex items-center justify-center gap-2"
+                            :class="autoUpdate
+                                ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                : 'bg-green-100 text-green-700 hover:bg-green-200'">
+                        <span x-show="autoUpdate" class="pulse-dot"></span>
+                        <span x-text="autoUpdate ? 'Stop Auto-Update (10s)' : '▶ Start Auto-Update (every 10s)'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+</template>
+
+<!-- ═══ ADMIN: Dashboard ══════════════════ -->
+<template x-if="$store.router.page === 'admin-dashboard'">
+    <section x-data="adminDashboard()">
+        <h3 class="text-xl font-bold mb-6">Admin Dashboard</h3>
+
+        <div x-show="loading" class="flex justify-center py-12">
+            <div class="spinner-dark" style="width:2rem;height:2rem;border-width:3px"></div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div x-show="!loading && stats" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <template x-for="card in statCards()" :key="card.label">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 card-hover">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-500" x-text="card.label"></span>
+                        <span class="text-xl" x-text="card.icon"></span>
+                    </div>
+                    <div class="text-3xl font-bold text-gray-900" x-text="card.value"></div>
+                </div>
+            </template>
+        </div>
+
+        <!-- No Stats Fallback -->
+        <div x-show="!loading && !stats" class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-8 text-sm text-amber-700">
+            Analytics service not available. Showing delivery data only.
+        </div>
+
+        <!-- Recent Deliveries -->
+        <div x-show="!loading && recentDeliveries.length > 0">
+            <h4 class="font-semibold text-gray-800 mb-3">Recent Deliveries</h4>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Customer</th>
+                            <th>Status</th>
+                            <th>Pickup</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="d in recentDeliveries" :key="d.ID">
+                            <tr>
+                                <td class="font-mono text-xs" x-text="'#' + d.ID"></td>
+                                <td x-text="'Customer ' + d.CustomerID"></td>
+                                <td>
+                                    <span class="status-badge" :class="statusColor(d.Status)" x-text="d.Status?.replace('_',' ')"></span>
+                                </td>
+                                <td class="max-w-[10rem] truncate" x-text="d.PickupLocation"></td>
+                                <td class="text-xs text-gray-500" x-text="formatDate(d.CreatedAt)"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</template>
+
+<!-- ═══ ADMIN: Deliveries Management ══════ -->
+<template x-if="$store.router.page === 'admin-deliveries'">
+    <section x-data="adminDeliveries()">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold">All Deliveries</h3>
+            <div class="flex items-center gap-2">
+                <label class="text-sm text-gray-500">Filter:</label>
+                <select x-model="statusFilter" @change="load()"
+                        class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <option value="">All statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="picked_up">Picked Up</option>
+                    <option value="in_transit">In Transit</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+            </div>
+        </div>
+
+        <div x-show="loading" class="flex justify-center py-12">
+            <div class="spinner-dark" style="width:2rem;height:2rem;border-width:3px"></div>
+        </div>
+
+        <div x-show="!loading && deliveries.length === 0" class="empty-state">
+            <p class="text-lg font-medium text-gray-400">No deliveries found</p>
+        </div>
+
+        <div x-show="!loading && deliveries.length > 0" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Customer</th>
+                        <th>Courier</th>
+                        <th>Status</th>
+                        <th>Pickup</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="d in deliveries" :key="d.ID">
+                        <tr>
+                            <td class="font-mono text-xs" x-text="'#' + d.ID"></td>
+                            <td x-text="d.CustomerID || '—'"></td>
+                            <td x-text="d.CourierID || 'Unassigned'"></td>
+                            <td>
+                                <span class="status-badge" :class="statusColor(d.Status)" x-text="d.Status?.replace('_',' ')"></span>
+                            </td>
+                            <td class="max-w-[8rem] truncate" x-text="d.PickupLocation"></td>
+                            <td class="text-xs text-gray-500" x-text="formatDate(d.CreatedAt)"></td>
+                            <td>
+                                <div class="flex gap-1">
+                                    <button x-show="nextStatusFor(d.Status)"
+                                            @click="updateStatus(d.ID, nextStatusFor(d.Status))"
+                                            class="text-xs bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-2 py-1 rounded font-medium transition">
+                                        → <span x-text="nextStatusFor(d.Status)?.replace('_',' ')"></span>
+                                    </button>
+                                    <button x-show="d.Status !== 'cancelled' && d.Status !== 'delivered'"
+                                            @click="updateStatus(d.ID, 'cancelled')"
+                                            class="text-xs bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded font-medium transition">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+
+        <div x-show="!loading" class="mt-3 text-sm text-gray-400">
+            <span x-text="deliveries.length"></span> deliveries
+        </div>
+    </section>
+</template>
+
+<!-- ═══ ADMIN: Live Map ═══════════════════ -->
+<template x-if="$store.router.page === 'admin-map'">
+    <section x-data="adminMap()">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold">Live Map</h3>
+            <span class="text-sm text-gray-500" x-show="!loading">
+                <span x-text="deliveryCount"></span> active deliveries
+            </span>
+        </div>
+
+        <div x-show="loading" class="flex justify-center py-12">
+            <div class="spinner-dark" style="width:2rem;height:2rem;border-width:3px"></div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+            <div id="admin-map" class="map-container map-container-lg"></div>
+        </div>
+    </section>
+</template>
+
+<!-- ═══ ADMIN: Send Notifications ═════════ -->
+<template x-if="$store.router.page === 'admin-notifications'">
+    <section x-data="adminNotifications()">
+        <h3 class="text-xl font-bold mb-6">Send Notification</h3>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Form -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <form @submit.prevent="send" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">User ID</label>
+                        <input x-model="form.user_id" type="number" required
+                               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                        <select x-model="form.type"
+                                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                            <option value="push">Push</option>
+                            <option value="email">Email</option>
+                            <option value="sms">SMS</option>
+                            <option value="delivery_update">Delivery Update</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Recipient</label>
+                        <input x-model="form.recipient" type="text" required
+                               placeholder="email or phone"
+                               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                        <input x-model="form.subject" type="text" required
+                               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                        <textarea x-model="form.message" rows="4" required
+                                  class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"></textarea>
+                    </div>
+                    <button type="submit" :disabled="sending"
+                            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2">
+                        <span x-show="sending" class="spinner"></span>
+                        <span x-text="sending ? 'Sending…' : '📨 Send Notification'"></span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Sent History -->
+            <div>
+                <h4 class="font-semibold text-gray-800 mb-3">Recently Sent</h4>
+                <div x-show="sent.length === 0" class="text-sm text-gray-400">
+                    No notifications sent in this session.
+                </div>
+                <div class="space-y-3">
+                    <template x-for="(n, i) in sent" :key="i">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 px-4 py-3">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-sm font-medium text-gray-800" x-text="n.Subject"></span>
+                                <span class="text-xs text-gray-400" x-text="formatDate(n.CreatedAt)"></span>
+                            </div>
+                            <p class="text-sm text-gray-600" x-text="n.Message"></p>
+                            <p class="text-xs text-gray-400 mt-1">
+                                <span class="capitalize" x-text="n.Type"></span> → <span x-text="n.recipient"></span>
+                            </p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </section>
+</template>
+
+            </div><!-- end .p-6 -->
+        </main>
+    </div>
+</template>
+
+<!-- ═══════════════════════════════════════════
+     SCRIPTS
+     ═══════════════════════════════════════════ -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="/js/api.js"></script>
+<script src="/js/map.js"></script>
+<script src="/js/app.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+
+</body>
+</html>

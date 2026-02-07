@@ -15,7 +15,7 @@ A microservices-based delivery tracking platform built with Golang, featuring re
 | **Cache** | Redis |
 | **Message Queue** | RabbitMQ |
 | **Real-Time** | WebSockets |
-| **Web Framework** | React + TypeScript (Advanced Phase) |
+| **Frontend** | Alpine.js + Tailwind CSS (CDN, zero build step) |
 | **Containerization** | Docker |
 | **Monitoring** | Prometheus + Grafana |
 | **Analytics** | GraphQL |
@@ -81,21 +81,45 @@ JWT-based authentication with role-based access control:
 | **Courier** | Update location and delivery status |
 | **Admin** | Full system access |
 
-## 🌐 Web Interfaces
+## 🌐 Web Frontend
 
-### Customer/Courier Portal
-- **Real-time delivery tracking** with interactive maps
-- **Order management** for customers (create, view, track deliveries)
-- **Location updates** for couriers with GPS integration
-- **WebSocket-powered live updates** for delivery status changes
-- **Responsive design** optimized for desktop and tablet use
+Lightweight SPA served by Nginx at **http://localhost:3000**. Zero build step — uses Alpine.js + Tailwind CSS + Leaflet.js via CDN.
 
-### Admin Dashboard
-- **Real-time system monitoring** with live metrics
-- **Delivery management** with bulk operations
-- **Courier performance analytics** and route optimization
-- **System health monitoring** with alerting capabilities
-- **Interactive maps** showing all active deliveries and couriers
+Nginx reverse-proxies `/api/*` → gateway, `/ws/*` → tracking service (WebSocket), eliminating CORS concerns.
+
+### Role-Based Views
+
+| Role | Pages |
+|------|-------|
+| **Customer** | Dashboard (my deliveries), Create Delivery, Live Track (map + WebSocket), Notifications |
+| **Courier** | Dashboard (assigned deliveries, status updates), GPS Location Update (auto-send every 10s) |
+| **Admin** | Dashboard (stats cards), All Deliveries (filter/manage), Live Map (all active couriers), Send Notifications |
+
+### Quick Start
+
+```bash
+# Start the frontend (with all backend services)
+docker-compose up --build frontend
+
+# Or start everything
+docker-compose up --build
+```
+
+1. Open **http://localhost:3000**
+2. Register a new account (choose customer / courier / admin role)
+3. Sign in and explore the role-appropriate dashboard
+
+### Tech Details
+
+| Component | Details |
+|-----------|---------|
+| **Runtime** | Nginx 1.27 Alpine (~5 MB image) |
+| **JS Framework** | Alpine.js 3.14 (via CDN, ~15 KB) |
+| **CSS** | Tailwind CSS Play CDN (JIT, zero purge needed) |
+| **Maps** | Leaflet 1.9 + OpenStreetMap (free, no API key) |
+| **Routing** | Hash-based (`#/customer/dashboard`) |
+| **Auth** | JWT stored in localStorage, auto-logout on 401 |
+| **Real-time** | Native WebSocket to `/ws/*` via nginx upgrade |
 
 ## 📡 API Endpoints
 

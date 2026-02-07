@@ -180,6 +180,20 @@ services:
       - delivertrack
 
 
+  # Frontend (Nginx)
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - gateway
+      - tracking
+    restart: unless-stopped
+    networks:
+      - delivertrack
+
   postgres:
     image: postgres:16-alpine
     ports:
