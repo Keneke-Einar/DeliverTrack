@@ -179,21 +179,7 @@ services:
     networks:
       - delivertrack
 
-  # Customer Portal Frontend
-  frontend:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.frontend
-    ports:
-      - "3000:80"
-    depends_on:
-      gateway:
-        condition: service_started
-    restart: unless-stopped
-    networks:
-      - delivertrack
 
-  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     ports:

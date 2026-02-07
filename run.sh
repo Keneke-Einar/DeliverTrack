@@ -37,7 +37,6 @@ case "${1:-start}" in
         print_success "Services started!"
         echo ""
         print_info "Available services:"
-        echo "  - Frontend (Customer Portal): http://localhost:3000"
         echo "  - Gateway API: http://localhost:8084"
         echo "  - Delivery Service: http://localhost:8080"
         echo "  - Tracking Service: http://localhost:8081"
