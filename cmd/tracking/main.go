@@ -275,6 +275,7 @@ func authMiddleware(authService authPorts.AuthService, next http.HandlerFunc) ht
 		ctx = context.WithValue(ctx, "role", claims.Role)
 		ctx = context.WithValue(ctx, "customer_id", claims.CustomerID)
 		ctx = context.WithValue(ctx, "courier_id", claims.CourierID)
+		ctx = context.WithValue(ctx, "authorization", authHeader)
 
 		// Call next handler with updated context
 		next.ServeHTTP(w, r.WithContext(ctx))

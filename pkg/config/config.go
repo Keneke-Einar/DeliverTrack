@@ -180,7 +180,7 @@ func setDefaults(serviceName string) {
 	viper.SetDefault("mongodb.url", "mongodb://admin:admin123@mongodb:27017/delivertrack?authSource=admin")
 	viper.SetDefault("redis.url", "redis:6379")
 	viper.SetDefault("rabbitmq.url", "amqp://guest:guest@rabbitmq:5672/")
-	viper.SetDefault("auth.jwt_secret", "your-secret-key-change-in-production")
+	viper.SetDefault("auth.jwt_secret", "your-super-secret-jwt-key-change-in-production")
 	viper.SetDefault("auth.jwt_expiration", "24h")
 	viper.SetDefault("vault.address", "http://localhost:8200")
 	viper.SetDefault("vault.token", "root")

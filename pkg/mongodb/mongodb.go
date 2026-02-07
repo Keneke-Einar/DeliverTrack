@@ -18,14 +18,15 @@ type MongoDB struct {
 
 // CourierLocation represents a courier's location with GeoJSON format
 type CourierLocation struct {
-	CourierID int64     `bson:"courier_id" json:"courier_id"`
-	Location  GeoJSON   `bson:"location" json:"location"`
-	Timestamp time.Time `bson:"timestamp" json:"timestamp"`
-	Speed     float64   `bson:"speed,omitempty" json:"speed,omitempty"`         // km/h
-	Heading   float64   `bson:"heading,omitempty" json:"heading,omitempty"`     // degrees
-	Accuracy  float64   `bson:"accuracy,omitempty" json:"accuracy,omitempty"`   // meters
-	Altitude  float64   `bson:"altitude,omitempty" json:"altitude,omitempty"`   // meters
-	CreatedAt time.Time `bson:"created_at" json:"created_at"`
+	CourierID  int64     `bson:"courier_id" json:"courier_id"`
+	DeliveryID int64     `bson:"delivery_id" json:"delivery_id"`
+	Location   GeoJSON   `bson:"location" json:"location"`
+	Timestamp  time.Time `bson:"timestamp" json:"timestamp"`
+	Speed      float64   `bson:"speed,omitempty" json:"speed,omitempty"`         // km/h
+	Heading    float64   `bson:"heading,omitempty" json:"heading,omitempty"`     // degrees
+	Accuracy   float64   `bson:"accuracy,omitempty" json:"accuracy,omitempty"`   // meters
+	Altitude   float64   `bson:"altitude,omitempty" json:"altitude,omitempty"`   // meters
+	CreatedAt  time.Time `bson:"created_at" json:"created_at"`
 }
 
 // DeliveryZone represents a geofenced delivery zone

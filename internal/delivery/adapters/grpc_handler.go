@@ -5,6 +5,8 @@ import (
 	"strconv"
 
 	"github.com/Keneke-Einar/delivertrack/internal/delivery/ports"
+	"github.com/Keneke-Einar/delivertrack/pkg/auth/domain"
+	"github.com/Keneke-Einar/delivertrack/pkg/grpcinterceptors"
 	"github.com/Keneke-Einar/delivertrack/proto/common"
 	deliveryProto "github.com/Keneke-Einar/delivertrack/proto/delivery"
 	"google.golang.org/grpc/codes"
@@ -65,6 +67,13 @@ func (h *GRPCHandler) GetDelivery(ctx context.Context, req *deliveryProto.GetDel
 
 	serviceReq := ports.GetDeliveryRequest{
 		ID: deliveryID,
+	}
+
+	// Extract user claims from context
+	if claims, ok := ctx.Value(grpcinterceptors.UserClaimsContextKey).(*domain.Claims); ok {
+		serviceReq.Role = claims.Role
+		serviceReq.UserCustomerID = claims.CustomerID
+		serviceReq.UserCourierID = claims.CourierID
 	}
 
 	d, err := h.service.GetDelivery(ctx, serviceReq)

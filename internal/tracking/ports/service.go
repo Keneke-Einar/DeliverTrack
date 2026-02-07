@@ -7,6 +7,13 @@ import (
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/domain"
 )
 
+// AuthContext holds common authorization fields
+type AuthContext struct {
+	Role          string `json:"role"`
+	UserCustomerID *int  `json:"user_customer_id,omitempty"`
+	UserCourierID  *int  `json:"user_courier_id,omitempty"`
+}
+
 // RecordLocationRequest for recording a location
 type RecordLocationRequest struct {
 	DeliveryID int      `json:"delivery_id"`
@@ -28,6 +35,7 @@ type GetDeliveryTrackRequest struct {
 // GetCurrentLocationRequest for retrieving current location
 type GetCurrentLocationRequest struct {
 	DeliveryID int `json:"delivery_id"`
+	AuthContext // Embedded for auth
 }
 
 // GetCourierLocationRequest for retrieving courier location

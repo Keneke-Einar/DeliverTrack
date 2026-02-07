@@ -85,7 +85,7 @@ func (s *TrackingService) RecordLocation(ctx context.Context, req ports.RecordLo
 		deliveryReq := &delivery.GetDeliveryRequest{
 			DeliveryId: fmt.Sprintf("%d", req.DeliveryID),
 		}
-		deliveryResp, err := s.deliveryClient.GetDelivery(context.Background(), deliveryReq)
+		deliveryResp, err := s.deliveryClient.GetDelivery(ctx, deliveryReq)
 		if err != nil {
 			fmt.Printf("Failed to get delivery for ETA calculation: %v\n", err)
 			return
@@ -162,6 +162,7 @@ func (s *TrackingService) GetDeliveryTrack(ctx context.Context, req ports.GetDel
 
 // GetCurrentLocation retrieves the current location for a delivery
 func (s *TrackingService) GetCurrentLocation(ctx context.Context, req ports.GetCurrentLocationRequest) (*domain.Location, error) {
+
 	return s.repo.GetLatestByDeliveryID(ctx, req.DeliveryID)
 }
 

@@ -41,6 +41,24 @@ func (m *MongoDB) GetLatestCourierLocation(ctx context.Context, courierID int64)
 	return &location, nil
 }
 
+// GetLatestLocationByDeliveryID returns the most recent location for a delivery
+func (m *MongoDB) GetLatestLocationByDeliveryID(ctx context.Context, deliveryID int64) (*CourierLocation, error) {
+	opts := options.FindOne().SetSort(bson.D{{Key: "timestamp", Value: -1}})
+	
+	var location CourierLocation
+	err := m.CourierLocationsCollection().FindOne(
+		ctx,
+		bson.M{"delivery_id": deliveryID},
+		opts,
+	).Decode(&location)
+	
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest location for delivery: %w", err)
+	}
+	
+	return &location, nil
+}
+
 // GetCourierLocationHistory returns location history for a courier within a time range
 func (m *MongoDB) GetCourierLocationHistory(ctx context.Context, courierID int64, since time.Time, limit int64) ([]CourierLocation, error) {
 	filter := bson.M{
@@ -61,6 +79,31 @@ func (m *MongoDB) GetCourierLocationHistory(ctx context.Context, courierID int64
 	var locations []CourierLocation
 	if err := cursor.All(ctx, &locations); err != nil {
 		return nil, fmt.Errorf("failed to decode courier locations: %w", err)
+	}
+	
+	return locations, nil
+}
+
+// GetLocationHistoryByDeliveryID returns location history for a delivery within a time range
+func (m *MongoDB) GetLocationHistoryByDeliveryID(ctx context.Context, deliveryID int64, since time.Time, limit int64) ([]CourierLocation, error) {
+	filter := bson.M{
+		"delivery_id": deliveryID,
+		"timestamp":   bson.M{"$gte": since},
+	}
+	
+	opts := options.Find().
+		SetSort(bson.D{{Key: "timestamp", Value: -1}}).
+		SetLimit(limit)
+	
+	cursor, err := m.CourierLocationsCollection().Find(ctx, filter, opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get location history for delivery: %w", err)
+	}
+	defer cursor.Close(ctx)
+	
+	var locations []CourierLocation
+	if err := cursor.All(ctx, &locations); err != nil {
+		return nil, fmt.Errorf("failed to decode locations for delivery: %w", err)
 	}
 	
 	return locations, nil

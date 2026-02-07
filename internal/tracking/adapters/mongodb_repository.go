@@ -24,7 +24,8 @@ func NewMongoDBLocationRepository(mongoDB *mongodb.MongoDB) *MongoDBLocationRepo
 // Create stores a new location
 func (r *MongoDBLocationRepository) Create(ctx context.Context, location *domain.Location) error {
 	courierLocation := &mongodb.CourierLocation{
-		CourierID: int64(location.CourierID),
+		CourierID:  int64(location.CourierID),
+		DeliveryID: int64(location.DeliveryID),
 		Location: mongodb.GeoJSON{
 			Type: "Point",
 			Coordinates: []interface{}{
@@ -61,9 +62,9 @@ func (r *MongoDBLocationRepository) GetByDeliveryID(ctx context.Context, deliver
 
 	// For now, we'll get recent courier locations (assuming deliveryID maps to courierID for simplicity)
 	// In a real implementation, we'd need to track which courier is assigned to which delivery
-	courierLocations, err := r.mongoDB.GetCourierLocationHistory(ctx, int64(deliveryID), time.Now().Add(-24*time.Hour), int64(limit))
+	courierLocations, err := r.mongoDB.GetLocationHistoryByDeliveryID(ctx, int64(deliveryID), time.Now().Add(-24*time.Hour), int64(limit))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get courier location history: %w", err)
+		return nil, fmt.Errorf("failed to get location history for delivery: %w", err)
 	}
 
 	locations := make([]*domain.Location, len(courierLocations))
@@ -93,9 +94,9 @@ func (r *MongoDBLocationRepository) GetByDeliveryID(ctx context.Context, deliver
 // GetLatestByDeliveryID retrieves the latest location for a delivery
 func (r *MongoDBLocationRepository) GetLatestByDeliveryID(ctx context.Context, deliveryID int) (*domain.Location, error) {
 	// Similar to GetByDeliveryID, simplified implementation
-	courierLocation, err := r.mongoDB.GetLatestCourierLocation(ctx, int64(deliveryID))
+	courierLocation, err := r.mongoDB.GetLatestLocationByDeliveryID(ctx, int64(deliveryID))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get latest courier location: %w", err)
+		return nil, fmt.Errorf("failed to get latest location for delivery: %w", err)
 	}
 
 	coords := courierLocation.Location.Coordinates.([]interface{})

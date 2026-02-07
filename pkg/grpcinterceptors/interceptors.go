@@ -61,6 +61,9 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 		// Extract trace context from context
 		traceID := getValueFromContext(ctx, "trace_id")
 		spanID := getValueFromContext(ctx, "span_id")
+		authHeader := getValueFromContext(ctx, "authorization")
+
+		md := metadata.MD{}
 
 		if traceID != "" && spanID != "" {
 			// Create new span ID for this call
@@ -68,12 +71,19 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 
 			// Add trace context to metadata
 			traceContext := traceID + ":" + newSpanID + ":" + spanID
-			md := metadata.Pairs(TraceContextKey, traceContext)
-			ctx = metadata.NewOutgoingContext(ctx, md)
+			md.Set(TraceContextKey, traceContext)
 
 			// Update context with new span
 			ctx = context.WithValue(ctx, "span_id", newSpanID)
 			ctx = context.WithValue(ctx, "parent_span_id", spanID)
+		}
+
+		if authHeader != "" {
+			md.Set(AuthorizationMetadataKey, authHeader)
+		}
+
+		if len(md) > 0 {
+			ctx = metadata.NewOutgoingContext(ctx, md)
 		}
 
 		return invoker(ctx, method, req, reply, cc, opts...)

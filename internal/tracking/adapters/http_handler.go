@@ -7,7 +7,9 @@ import (
 	"strings"
 
 	"github.com/Keneke-Einar/delivertrack/internal/tracking/ports"
+	"github.com/Keneke-Einar/delivertrack/pkg/grpcinterceptors"
 	httputil "github.com/Keneke-Einar/delivertrack/pkg/http"
+	"google.golang.org/grpc/metadata"
 )
 
 // HTTPHandler handles HTTP requests for tracking operations
@@ -165,6 +167,12 @@ func (h *HTTPHandler) GetCurrentLocation(w http.ResponseWriter, r *http.Request)
 
 	// Create trace context for request tracing
 	ctx := httputil.ExtractTraceContext(r, "tracking-service", "get_current_location_http")
+
+	// Add authorization metadata for gRPC calls
+	if authHeader := r.Header.Get("Authorization"); authHeader != "" {
+		md := metadata.Pairs(grpcinterceptors.AuthorizationMetadataKey, authHeader)
+		ctx = metadata.NewOutgoingContext(ctx, md)
+	}
 
 	// Get current location
 	location, err := h.service.GetCurrentLocation(ctx, ports.GetCurrentLocationRequest{
